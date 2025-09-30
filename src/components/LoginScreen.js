@@ -228,7 +228,7 @@ const lightStyles = StyleSheet.create({
 
 /* Tema Gelap */
 const darkStyles = StyleSheet.create({
-  container: { backgroundColor: '#121212' },
+  container: { backgroundColor: '#000' },
   input: { borderColor: '#444', backgroundColor: '#1e1e1e', color: '#fff' },
   text: { color: '#fff' },
 });

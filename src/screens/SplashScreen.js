@@ -1,8 +1,16 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, StatusBar, Dimensions, Image } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  StatusBar,
+  Dimensions,
+  Image,
+  ImageBackground,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import CustomSpinner from '../components/CustomSpinner'; // ✅ Import spinner
-import logo from '../img/fisioterapibiru.png'; // ✅ Ganti dengan logo yang sesuai
+import CustomSpinner from '../components/CustomSpinner';
+import logo from '../img/fisiotrapiputih.png';
+import backgroundImage from '../img/spalsh/bg.jpg';
 
 const { width, height } = Dimensions.get('window');
 
@@ -21,7 +29,11 @@ const SplashScreen = () => {
   }, [navigation]);
 
   return (
-    <View style={styles.container}>
+    <ImageBackground
+      source={backgroundImage}
+      style={styles.container}
+      resizeMode="cover"
+    >
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Logo */}
@@ -29,7 +41,7 @@ const SplashScreen = () => {
 
       {/* Spinner custom */}
       <CustomSpinner />
-    </View>
+    </ImageBackground>
   );
 };
 
@@ -38,11 +50,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
   },
   logo: {
-    width: width * 0.4,
-    height: height * 0.2,
+    width: width * 0.6,
+    height: height * 0.4,
     marginBottom: 30,
   },
 });

@@ -44,7 +44,8 @@ export default function HomeScreen({ navigation }) {
         title="Home"
         showBack={false}
         onBack={() => navigation.goBack()}
-        rightIcon={'cart-outline'}
+        showCart={true}
+        showMessage={true}
       />
 
       <ScrollView

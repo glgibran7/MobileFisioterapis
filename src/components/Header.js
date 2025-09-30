@@ -21,6 +21,8 @@ const Header = ({
   onMessagePress,
   cartCount = 3,
   messageCount = 5,
+  showCart = true, // 👈 tambah kontrol
+  showMessage = true, // 👈 tambah kontrol
 }) => {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
@@ -55,36 +57,43 @@ const Header = ({
         {/* Kanan: Cart + Message */}
         <View style={styles.rightSection}>
           {/* Keranjang */}
-          <TouchableOpacity onPress={onCartPress} style={styles.iconButton}>
-            <View style={{ position: 'relative' }}>
-              <Ionicons
-                name="cart-outline"
-                size={width * 0.075}
-                color={isDark ? '#FFF' : '#000'}
-              />
-              {cartCount > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{cartCount}</Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
+          {showCart && (
+            <TouchableOpacity onPress={onCartPress} style={styles.iconButton}>
+              <View style={{ position: 'relative' }}>
+                <Ionicons
+                  name="cart-outline"
+                  size={width * 0.075}
+                  color={isDark ? '#FFF' : '#000'}
+                />
+                {cartCount > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{cartCount}</Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          )}
 
           {/* Pesan */}
-          <TouchableOpacity onPress={onMessagePress} style={styles.iconButton}>
-            <View style={{ position: 'relative' }}>
-              <Ionicons
-                name="chatbubbles-outline"
-                size={width * 0.075}
-                color={isDark ? '#FFF' : '#000'}
-              />
-              {messageCount > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{messageCount}</Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
+          {showMessage && (
+            <TouchableOpacity
+              onPress={onMessagePress}
+              style={styles.iconButton}
+            >
+              <View style={{ position: 'relative' }}>
+                <Ionicons
+                  name="chatbubbles-outline"
+                  size={width * 0.075}
+                  color={isDark ? '#FFF' : '#000'}
+                />
+                {messageCount > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{messageCount}</Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </SafeAreaView>
@@ -115,7 +124,7 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     padding: 8,
-    marginLeft: 12,
+    marginLeft: 0,
   },
   badge: {
     position: 'absolute',
