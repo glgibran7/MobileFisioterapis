@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View, Dimensions } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,14 +16,32 @@ export default function App() {
   const [isFirstLaunch, setIsFirstLaunch] = React.useState(null);
 
   React.useEffect(() => {
-    AsyncStorage.getItem('alreadyLaunched').then(value => {
-      if (value === null) {
-        setIsFirstLaunch(true);
-      } else {
+    const checkLaunch = async () => {
+      try {
+        const value = await AsyncStorage.getItem('alreadyLaunched');
+        if (value === null) {
+          await AsyncStorage.setItem('alreadyLaunched', 'true');
+          setIsFirstLaunch(true);
+        } else {
+          setIsFirstLaunch(false);
+        }
+      } catch (e) {
+        console.log('Error reading AsyncStorage', e);
         setIsFirstLaunch(false);
       }
-    });
+    };
+
+    checkLaunch();
   }, []);
+
+  // Tampilkan loading dulu
+  if (isFirstLaunch === null) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
 
   return (
     <GlobalProvider>
@@ -39,7 +57,6 @@ export default function App() {
           <Stack.Screen name="LoginScreen" component={LoginScreen} />
           <Stack.Screen name="RegisterScreen" component={RegisterScreen} />
           <Stack.Screen name="MainScreen" component={MainScreen} />
-          {/* Tambahkan screen lain seperti Main, Paket, HomeMentor sesuai kebutuhan */}
         </Stack.Navigator>
       </NavigationContainer>
     </GlobalProvider>

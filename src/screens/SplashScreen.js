@@ -23,7 +23,7 @@ const SplashScreen = () => {
         index: 0,
         routes: [{ name: 'LoginScreen' }], // ✅ arahkan ke Login
       });
-    }, 3000); // tampil 3 detik
+    }, 3000);
 
     return () => clearTimeout(timer);
   }, [navigation]);
@@ -34,7 +34,8 @@ const SplashScreen = () => {
       style={styles.container}
       resizeMode="cover"
     >
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      {/* Hilangkan status bar */}
+      <StatusBar hidden={true} />
 
       {/* Logo */}
       <Image source={logo} style={styles.logo} resizeMode="contain" />
