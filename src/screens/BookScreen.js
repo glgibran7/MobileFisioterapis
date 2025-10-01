@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import Header from '../components/Header.js';
+import { useNavigation } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
@@ -26,7 +27,7 @@ const DATA = [
   {
     id: '2',
     name: 'Dr. Sarah Smith',
-    role: 'Dokter Umum',
+    role: 'Fisioterapis',
     rating: 4.5,
     photo: 'https://randomuser.me/api/portraits/women/44.jpg',
   },
@@ -36,6 +37,7 @@ const BookScreen = () => {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
   const [search, setSearch] = useState('');
+  const navigation = useNavigation();
 
   const filteredData = DATA.filter(
     item =>
@@ -49,7 +51,7 @@ const BookScreen = () => {
         styles.card,
         {
           backgroundColor: isDark ? '#111' : '#fff',
-          borderColor: isDark ? '#333' : '#000',
+          borderColor: isDark ? '#555' : '#000', // ✅ lebih kontras di dark mode
           shadowColor: isDark ? '#000' : '#aaa',
         },
       ]}
@@ -76,7 +78,12 @@ const BookScreen = () => {
 
         {/* Tombol */}
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.appointmentBtn}>
+          <TouchableOpacity
+            style={styles.appointmentBtn}
+            onPress={() =>
+              navigation.navigate('AppointmentScreen', { doctor: item })
+            } // ✅ kirim data ke AppointmentScreen
+          >
             <Text style={styles.btnText}>Appointment</Text>
           </TouchableOpacity>
 
@@ -111,7 +118,7 @@ const BookScreen = () => {
           style={[
             styles.searchContainer,
             {
-              borderColor: isDark ? '#555' : '#ccc',
+              borderColor: isDark ? '#777' : '#ccc', // ✅ border lebih jelas di dark mode
               backgroundColor: isDark ? '#111' : '#fff',
             },
           ]}
@@ -136,7 +143,20 @@ const BookScreen = () => {
           data={filteredData}
           renderItem={renderItem}
           keyExtractor={item => item.id}
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={{ padding: 16, flexGrow: 1 }}
+          ListEmptyComponent={
+            <View style={{ alignItems: 'center', marginTop: 50 }}>
+              <Ionicons
+                name="search-outline"
+                size={40}
+                color={isDark ? '#777' : '#aaa'}
+                style={{ marginBottom: 10 }}
+              />
+              <Text style={{ color: isDark ? '#777' : '#555', fontSize: 16 }}>
+                Dokter atau role tidak ditemukan
+              </Text>
+            </View>
+          }
         />
       </View>
     </>
@@ -155,7 +175,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     margin: 16,
   },
-
   searchInput: {
     flex: 1,
     height: 40,

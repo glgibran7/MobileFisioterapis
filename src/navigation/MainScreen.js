@@ -6,7 +6,7 @@ import Ionicons from '@react-native-vector-icons/ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import HomeScreen from '../screens/HomeScreen';
-import BookScreen from '../screens/BookScreen';
+import BookStack from './BookStack';
 // Sementara pakai HomeScreen sebagai placeholder,
 // nanti bisa ganti dengan screen sesuai kebutuhan
 const DummyScreen = ({ route }) => {
@@ -64,7 +64,7 @@ const MainScreen = () => {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Book" component={BookScreen} />
+      <Tab.Screen name="Book" component={BookStack} />
       <Tab.Screen name="Riwayat" component={DummyScreen} />
       <Tab.Screen name="Profile" component={DummyScreen} />
     </Tab.Navigator>
