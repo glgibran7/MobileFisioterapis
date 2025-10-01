@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Dimensions,
   useColorScheme,
+  TextInput,
 } from 'react-native';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import Header from '../components/Header.js';
@@ -34,6 +35,13 @@ const DATA = [
 const BookScreen = () => {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
+  const [search, setSearch] = useState('');
+
+  const filteredData = DATA.filter(
+    item =>
+      item.name.toLowerCase().includes(search.toLowerCase()) ||
+      item.role.toLowerCase().includes(search.toLowerCase()),
+  );
 
   const renderItem = ({ item }) => (
     <View
@@ -98,8 +106,34 @@ const BookScreen = () => {
           { backgroundColor: isDark ? '#000' : '#fff' },
         ]}
       >
+        {/* 🔍 Search Bar */}
+        <View
+          style={[
+            styles.searchContainer,
+            {
+              borderColor: isDark ? '#555' : '#ccc',
+              backgroundColor: isDark ? '#111' : '#fff',
+            },
+          ]}
+        >
+          <Ionicons
+            name="search-outline"
+            size={20}
+            color={isDark ? '#ccc' : '#555'}
+            style={{ marginRight: 6 }}
+          />
+          <TextInput
+            style={[styles.searchInput, { color: isDark ? '#fff' : '#000' }]}
+            placeholder="Cari dokter atau role..."
+            placeholderTextColor={isDark ? '#777' : '#999'}
+            value={search}
+            onChangeText={setSearch}
+          />
+        </View>
+
+        {/* List */}
         <FlatList
-          data={DATA}
+          data={filteredData}
           renderItem={renderItem}
           keyExtractor={item => item.id}
           contentContainerStyle={{ padding: 16 }}
@@ -112,6 +146,19 @@ const BookScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    margin: 16,
+  },
+
+  searchInput: {
+    flex: 1,
+    height: 40,
   },
   card: {
     flexDirection: 'row',
