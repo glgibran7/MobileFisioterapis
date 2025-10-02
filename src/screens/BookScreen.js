@@ -19,14 +19,14 @@ const { width } = Dimensions.get('window');
 const DATA = [
   {
     id: '1',
-    name: 'Dr. John Doe',
+    name: 'Dr. Joefandi',
     role: 'Fisioterapis',
     rating: 4.8,
     photo: 'https://randomuser.me/api/portraits/men/32.jpg',
   },
   {
     id: '2',
-    name: 'Dr. Sarah Smith',
+    name: 'Dr. Maria Smith',
     role: 'Fisioterapis',
     rating: 4.5,
     photo: 'https://randomuser.me/api/portraits/women/44.jpg',
@@ -131,7 +131,7 @@ const BookScreen = () => {
           />
           <TextInput
             style={[styles.searchInput, { color: isDark ? '#fff' : '#000' }]}
-            placeholder="Cari dokter atau role..."
+            placeholder="Cari trapis..."
             placeholderTextColor={isDark ? '#777' : '#999'}
             value={search}
             onChangeText={setSearch}

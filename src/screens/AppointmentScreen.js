@@ -11,10 +11,12 @@ import {
   ScrollView,
 } from 'react-native';
 import Header from '../components/Header.js';
+import { useNavigation } from '@react-navigation/native';
+import { useGlobal } from '../context/GlobalContext.js';
+import Toast from 'react-native-toast-message';
 
 const { width } = Dimensions.get('window');
 
-// contoh jadwal (tanggal & jam)
 const days = [
   { id: '1', day: '7', label: 'SUN' },
   { id: '2', day: '8', label: 'MON' },
@@ -32,19 +34,41 @@ const hours = [
 ];
 
 const AppointmentScreen = ({ route }) => {
-  const { doctor } = route.params; // ✅ ambil data dokter dari BookScreen
+  const navigation = useNavigation();
+  const { doctor } = route.params;
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
 
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedHour, setSelectedHour] = useState(null);
 
+  // ✅ sekarang hanya ambil spinner dari context
+  const { showLoading, hideLoading, showToast } = useGlobal();
+
+  const handleBook = () => {
+    if (!selectedDay || !selectedHour) {
+      showToast('Pilih jadwal & jam terlebih dahulu!', 'error');
+      return;
+    }
+
+    showLoading();
+    setTimeout(() => {
+      hideLoading();
+      showToast(
+        `Appointment dengan ${doctor.name} berhasil dibuat ✅`,
+        'success',
+      );
+      navigation.goBack();
+    }, 2000);
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: isDark ? '#000' : '#fff' }}>
-      {/* Header tetap muncul */}
+      {/* Header */}
       <Header
         title="Appointment"
         showBack={true}
+        onBack={() => navigation.goBack()}
         showCart={false}
         showMessage={false}
       />
@@ -176,10 +200,13 @@ const AppointmentScreen = ({ route }) => {
         </View>
 
         {/* Tombol Book */}
-        <TouchableOpacity style={styles.bookBtn}>
+        <TouchableOpacity style={styles.bookBtn} onPress={handleBook}>
           <Text style={styles.bookBtnText}>Book Appointment</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* ✅ Pasang Toast di dalam screen */}
+      <Toast />
     </View>
   );
 };
@@ -194,8 +221,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   avatar: {
-    width: width * 0.35,
-    height: width * 0.35,
+    width: width * 0.3,
+    height: width * 0.3,
     borderRadius: width * 0.2,
     marginBottom: 12,
   },

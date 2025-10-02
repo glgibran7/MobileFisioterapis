@@ -14,12 +14,11 @@ import {
 import CheckBox from '@react-native-community/checkbox';
 import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from '@react-native-vector-icons/ionicons';
-import { useGlobal } from '../context/GlobalContext.js';
 import { useNavigation } from '@react-navigation/native';
+import { useGlobal } from '../context/GlobalContext'; // ✅ pakai context
 
-// Import logo terang & gelap
 import logoLight from '../img/fisioterapibiru.png';
-import logoDark from '../img/fisiotrapiputih.png'; // contoh logo versi dark
+import logoDark from '../img/fisiotrapiputih.png';
 
 const { width } = Dimensions.get('window');
 
@@ -28,12 +27,13 @@ const LoginScreen = () => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
+  const { showToast, showLoading, hideLoading } = useGlobal(); // ✅ ambil dari context
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const { showLoading, hideLoading, showToast } = useGlobal();
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -46,13 +46,16 @@ const LoginScreen = () => {
 
   const handleLogin = () => {
     if (email === '' || password === '') {
-      showToast('Email atau password kosong!', 'error');
+      showToast('Login gagal', 'error', 'Email atau password kosong!');
       return;
     }
+
     showLoading();
+    showToast('Loading...', 'info', 'Sedang memproses login');
+
     setTimeout(() => {
       hideLoading();
-      showToast('Login berhasil!', 'success');
+      showToast('Login berhasil!', 'success', 'Selamat datang kembali 👋');
       navigation.replace('MainScreen');
     }, 2000);
   };
@@ -60,7 +63,7 @@ const LoginScreen = () => {
   const themeStyles = isDark ? darkStyles : lightStyles;
 
   return (
-    <>
+    <View style={{ flex: 1 }}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor={isDark ? '#121212' : '#FFFFFF'}
@@ -69,7 +72,7 @@ const LoginScreen = () => {
         contentContainerStyle={[styles.container, themeStyles.container]}
       >
         <Animated.Image
-          source={isDark ? logoDark : logoLight} // Ganti logo sesuai mode
+          source={isDark ? logoDark : logoLight}
           style={[
             styles.logo,
             { opacity: fadeAnim, width: width * 0.9, height: width * 0.5 },
@@ -122,7 +125,13 @@ const LoginScreen = () => {
           </Text>
           <View style={styles.forgotPasswordContainer}>
             <TouchableOpacity
-              onPress={() => showToast('Fitur lupa password 🚧', 'error')}
+              onPress={() =>
+                showToast(
+                  'Fitur belum tersedia 🚧',
+                  'error',
+                  'Lupa password belum aktif',
+                )
+              }
             >
               <Text style={styles.forgotPasswordText}>Lupa Password?</Text>
             </TouchableOpacity>
@@ -155,7 +164,7 @@ const LoginScreen = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </>
+    </View>
   );
 };
 
