@@ -10,9 +10,9 @@ import {
   useColorScheme,
   ScrollView,
 } from 'react-native';
-import Header from '../components/Header.js';
+import Header from '../../components/Header';
+import { useGlobal } from '../../context/GlobalContext';
 import { useNavigation } from '@react-navigation/native';
-import { useGlobal } from '../context/GlobalContext.js';
 import Toast from 'react-native-toast-message';
 
 const { width } = Dimensions.get('window');

@@ -5,8 +5,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GlobalProvider } from './src/context/GlobalContext.js';
 import SplashScreen from './src/screens/SplashScreen.js';
-import LoginScreen from './src/components/LoginScreen';
-import RegisterScreen from './src/components/RegisterScreen';
+import LoginScreen from './src/screens/LoginScreen.js';
+import RegisterScreen from './src/screens/RegisterScreen.js';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import MainScreen from './src/navigation/MainScreen.js';
 

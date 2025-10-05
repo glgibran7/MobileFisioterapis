@@ -17,12 +17,15 @@ const Header = ({
   title,
   onBack,
   showBack = true,
-  onCartPress,
+  onLocationPress,
   onMessagePress,
-  cartCount = 3,
-  messageCount = 5,
-  showCart = true, // 👈 tambah kontrol
-  showMessage = true, // 👈 tambah kontrol
+  onNotificationPress,
+  location = 'Mataram',
+  messageCount = 99,
+  notificationCount = 5,
+  showLocation = true,
+  showMessage = true,
+  showNotification = true,
 }) => {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
@@ -38,7 +41,7 @@ const Header = ({
       />
 
       <View style={styles.container}>
-        {/* Kiri: Back + Title */}
+        {/* Kiri: Back + Title / Lokasi */}
         <View style={styles.leftSection}>
           {showBack && (
             <TouchableOpacity onPress={onBack} style={styles.iconButton}>
@@ -49,32 +52,69 @@ const Header = ({
               />
             </TouchableOpacity>
           )}
-          <Text style={[styles.title, { color: isDark ? '#FFF' : '#000' }]}>
-            {title}
-          </Text>
+
+          {showLocation ? (
+            <TouchableOpacity
+              onPress={onLocationPress}
+              style={styles.locationWrapper}
+            >
+              <Text
+                style={[
+                  styles.locationLabel,
+                  { color: isDark ? '#aaa' : '#666' },
+                ]}
+              >
+                Lokasi
+              </Text>
+              <View style={styles.locationRow}>
+                <Ionicons
+                  name="location-outline"
+                  size={width * 0.06}
+                  color={isDark ? '#FFF' : '#000'}
+                />
+                <Text
+                  style={[
+                    styles.locationText,
+                    { color: isDark ? '#FFF' : '#000' },
+                  ]}
+                >
+                  {location}
+                </Text>
+                <Ionicons
+                  name="chevron-down"
+                  size={width * 0.05}
+                  color={isDark ? '#FFF' : '#000'}
+                />
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <Text style={[styles.title, { color: isDark ? '#FFF' : '#000' }]}>
+              {title}
+            </Text>
+          )}
         </View>
 
-        {/* Kanan: Cart + Message */}
+        {/* Kanan: Pesan + Notifikasi */}
         <View style={styles.rightSection}>
-          {/* Keranjang */}
-          {showCart && (
-            <TouchableOpacity onPress={onCartPress} style={styles.iconButton}>
+          {showNotification && (
+            <TouchableOpacity
+              onPress={onNotificationPress}
+              style={styles.iconButton}
+            >
               <View style={{ position: 'relative' }}>
                 <Ionicons
-                  name="cart-outline"
+                  name="notifications-outline"
                   size={width * 0.075}
                   color={isDark ? '#FFF' : '#000'}
                 />
-                {cartCount > 0 && (
+                {notificationCount > 0 && (
                   <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{cartCount}</Text>
+                    <Text style={styles.badgeText}>{notificationCount}</Text>
                   </View>
                 )}
               </View>
             </TouchableOpacity>
           )}
-
-          {/* Pesan */}
           {showMessage && (
             <TouchableOpacity
               onPress={onMessagePress}
@@ -102,7 +142,7 @@ const Header = ({
 
 const styles = StyleSheet.create({
   container: {
-    height: 56,
+    height: 64,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -121,6 +161,24 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginLeft: 8,
+  },
+  locationWrapper: {
+    flexDirection: 'column',
+    marginLeft: 8,
+  },
+  locationLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: -2,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  locationText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginHorizontal: 4,
   },
   iconButton: {
     padding: 8,

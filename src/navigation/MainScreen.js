@@ -1,17 +1,15 @@
-// MainScreen.js
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Dimensions, useColorScheme } from 'react-native';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import HomeScreen from '../screens/HomeScreen';
+import HomeStack from './HomeStack';
 import BookStack from './BookStack';
-// Sementara pakai HomeScreen sebagai placeholder,
-// nanti bisa ganti dengan screen sesuai kebutuhan
-const DummyScreen = ({ route }) => {
-  return null; // atau bisa return <Text>{route.name}</Text>
-};
+import ProfileStack from './ProfileStack';
+import TerapisStack from './TerapisStack';
+
+import HistoryScreen from '../screens/riwayat/HistoryScreen';
 
 const Tab = createBottomTabNavigator();
 const { height, width } = Dimensions.get('window');
@@ -31,6 +29,9 @@ const MainScreen = () => {
           switch (route.name) {
             case 'Home':
               iconName = 'home-outline';
+              break;
+            case 'Cari':
+              iconName = 'search-outline';
               break;
             case 'Book':
               iconName = 'calendar-outline';
@@ -63,10 +64,11 @@ const MainScreen = () => {
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Home" component={HomeStack} />
+      <Tab.Screen name="Cari" component={TerapisStack} />
       <Tab.Screen name="Book" component={BookStack} />
-      <Tab.Screen name="Riwayat" component={DummyScreen} />
-      <Tab.Screen name="Profile" component={DummyScreen} />
+      <Tab.Screen name="Riwayat" component={HistoryScreen} />
+      <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
   );
 };

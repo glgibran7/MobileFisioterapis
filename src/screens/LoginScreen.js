@@ -15,9 +15,11 @@ import CheckBox from '@react-native-community/checkbox';
 import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import { useNavigation } from '@react-navigation/native';
-import { useGlobal } from '../context/GlobalContext'; // ✅ pakai context
+import { useGlobal } from '../context/GlobalContext';
+import Api from '../utils/Api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import logoLight from '../img/fisioterapibiru.png';
+import logoLight from '../img/fisioterapihitam.png';
 import logoDark from '../img/fisiotrapiputih.png';
 
 const { width } = Dimensions.get('window');
@@ -27,7 +29,7 @@ const LoginScreen = () => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
-  const { showToast, showLoading, hideLoading } = useGlobal(); // ✅ ambil dari context
+  const { showToast, showLoading, hideLoading } = useGlobal();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -44,20 +46,80 @@ const LoginScreen = () => {
     }).start();
   }, []);
 
-  const handleLogin = () => {
+  useEffect(() => {
+    // 🔹 Cek apakah ada data remember di storage
+    const loadRememberedData = async () => {
+      try {
+        const savedEmail = await AsyncStorage.getItem('remember_email');
+        const savedPassword = await AsyncStorage.getItem('remember_password');
+        const remember = await AsyncStorage.getItem('remember_me');
+
+        if (remember === 'true' && savedEmail && savedPassword) {
+          setEmail(savedEmail);
+          setPassword(savedPassword);
+          setRememberMe(true);
+        }
+      } catch (err) {
+        console.log('Error loading remembered data:', err);
+      }
+    };
+
+    loadRememberedData();
+  }, []);
+
+  const handleLogin = async () => {
     if (email === '' || password === '') {
-      showToast('Login gagal', 'error', 'Email atau password kosong!');
+      showToast(
+        'Email atau password tidak boleh kosong!',
+        'Masukkan email & password anda',
+        'error',
+      );
       return;
     }
 
     showLoading();
-    showToast('Loading...', 'info', 'Sedang memproses login');
 
-    setTimeout(() => {
+    try {
+      const response = await Api.post('/auth/login', {
+        email,
+        password,
+      });
+
+      console.log('Response login:', response.data);
+
+      const { status, data } = response.data;
+
+      if (status === 'success' && data?.access_token) {
+        // 🔹 Simpan token & user info
+        await AsyncStorage.setItem('token', data.access_token);
+        await AsyncStorage.setItem('user', JSON.stringify(data));
+
+        // 🔹 Simpan / hapus data remember
+        if (rememberMe) {
+          await AsyncStorage.setItem('remember_email', email);
+          await AsyncStorage.setItem('remember_password', password);
+          await AsyncStorage.setItem('remember_me', 'true');
+        } else {
+          await AsyncStorage.removeItem('remember_email');
+          await AsyncStorage.removeItem('remember_password');
+          await AsyncStorage.setItem('remember_me', 'false');
+        }
+
+        hideLoading();
+        showToast('Selamat datang kembali', `${data.name} 👋`, 'success');
+        navigation.replace('MainScreen');
+      } else {
+        hideLoading();
+        showToast('Terjadi kesalahan saat login', 'Silakan coba lagi', 'error');
+      }
+    } catch (error) {
       hideLoading();
-      showToast('Login berhasil!', 'success', 'Selamat datang kembali 👋');
-      navigation.replace('MainScreen');
-    }, 2000);
+      showToast(
+        'Email atau password salah!',
+        'Periksa kembali email/password anda',
+        'error',
+      );
+    }
   };
 
   const themeStyles = isDark ? darkStyles : lightStyles;
@@ -128,8 +190,8 @@ const LoginScreen = () => {
               onPress={() =>
                 showToast(
                   'Fitur belum tersedia 🚧',
-                  'error',
                   'Lupa password belum aktif',
+                  'warning', // atau "error", terserah kamu
                 )
               }
             >

@@ -8,6 +8,7 @@ import {
   ImageBackground,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import CustomSpinner from '../components/CustomSpinner';
 import logo from '../img/fisiotrapiputih.png';
 import backgroundImage from '../img/spalsh/bg.jpg';
@@ -18,14 +19,35 @@ const SplashScreen = () => {
   const navigation = useNavigation();
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'LoginScreen' }], // ✅ arahkan ke Login
-      });
-    }, 3000);
+    const checkLogin = async () => {
+      try {
+        const token = await AsyncStorage.getItem('token');
 
-    return () => clearTimeout(timer);
+        setTimeout(() => {
+          if (token) {
+            // ✅ Kalau token ada → langsung ke MainScreen
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'MainScreen' }],
+            });
+          } else {
+            // ❌ Kalau tidak ada token → ke LoginScreen
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'LoginScreen' }],
+            });
+          }
+        }, 2000); // spinner jalan 2 detik
+      } catch (error) {
+        console.log('Error checking token:', error);
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'LoginScreen' }],
+        });
+      }
+    };
+
+    checkLogin();
   }, [navigation]);
 
   return (
@@ -34,13 +56,8 @@ const SplashScreen = () => {
       style={styles.container}
       resizeMode="cover"
     >
-      {/* Hilangkan status bar */}
       <StatusBar hidden={true} />
-
-      {/* Logo */}
       <Image source={logo} style={styles.logo} resizeMode="contain" />
-
-      {/* Spinner custom */}
       <CustomSpinner />
     </ImageBackground>
   );

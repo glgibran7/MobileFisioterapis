@@ -11,7 +11,8 @@ import {
   TextInput,
 } from 'react-native';
 import Ionicons from '@react-native-vector-icons/ionicons';
-import Header from '../components/Header.js';
+import Header from '../../components/Header';
+import { useGlobal } from '../../context/GlobalContext';
 import { useNavigation } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
@@ -19,7 +20,7 @@ const { width } = Dimensions.get('window');
 const DATA = [
   {
     id: '1',
-    name: 'Dr. Joefandi',
+    name: 'Dr. Antony Santos',
     role: 'Fisioterapis',
     rating: 4.8,
     photo: 'https://randomuser.me/api/portraits/men/32.jpg',

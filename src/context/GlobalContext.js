@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
-import { View, StyleSheet } from 'react-native'; // ✅ tambahkan ini
-import Toast from 'react-native-toast-message';
+import { View, StyleSheet, Text } from 'react-native';
+import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
 import CustomSpinner from '../components/CustomSpinner';
 
 const GlobalContext = createContext();
@@ -11,10 +11,11 @@ export const GlobalProvider = ({ children }) => {
   const showLoading = () => setLoading(true);
   const hideLoading = () => setLoading(false);
 
-  const showToast = (message, type = 'success') => {
+  const showToast = (message, message2, type) => {
     Toast.show({
-      type: type,
+      type,
       text1: message,
+      text2: message2,
       position: 'top',
       visibilityTime: 2500,
     });
@@ -30,7 +31,35 @@ export const GlobalProvider = ({ children }) => {
         </View>
       )}
 
-      <Toast />
+      {/* ✅ Config toast type */}
+      <Toast
+        config={{
+          success: props => (
+            <BaseToast
+              {...props}
+              style={{ borderLeftColor: 'green' }}
+              text1Style={{ fontSize: 15, fontWeight: 'bold' }}
+              text2Style={{ fontSize: 13 }}
+            />
+          ),
+          error: props => (
+            <ErrorToast
+              {...props}
+              style={{ borderLeftColor: 'red' }}
+              text1Style={{ fontSize: 15, fontWeight: 'bold' }}
+              text2Style={{ fontSize: 13 }}
+            />
+          ),
+          warning: props => (
+            <BaseToast
+              {...props}
+              style={{ borderLeftColor: 'orange', borderLeftWidth: 6 }}
+              text1Style={{ fontSize: 15, fontWeight: 'bold', color: 'orange' }}
+              text2Style={{ fontSize: 13, color: 'orange' }}
+            />
+          ),
+        }}
+      />
     </GlobalContext.Provider>
   );
 };
