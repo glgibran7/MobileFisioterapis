@@ -112,8 +112,8 @@ const BookAppointmentScreen = () => {
         showBack
         showLocation={false}
         onBack={() => navigation.goBack()}
-        showCart={false}
-        showMessage={false}
+        showMessage
+        showNotification
       />
 
       <ScrollView

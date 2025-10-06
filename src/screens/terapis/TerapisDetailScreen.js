@@ -43,7 +43,7 @@ const TerapisDetailScreen = ({ route, navigation }) => {
         showLocation={false}
         onBack={() => navigation.goBack()}
         showCart={false}
-        showMessage={false}
+        showMessage
       />
 
       <ScrollView contentContainerStyle={styles.scroll}>

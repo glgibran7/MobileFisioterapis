@@ -30,7 +30,7 @@ const MainScreen = () => {
             case 'Home':
               iconName = 'home-outline';
               break;
-            case 'Cari':
+            case 'Terapis':
               iconName = 'search-outline';
               break;
             case 'Book':
@@ -65,7 +65,7 @@ const MainScreen = () => {
       })}
     >
       <Tab.Screen name="Home" component={HomeStack} />
-      <Tab.Screen name="Cari" component={TerapisStack} />
+      <Tab.Screen name="Terapis" component={TerapisStack} />
       <Tab.Screen name="Book" component={BookStack} />
       <Tab.Screen name="Riwayat" component={HistoryScreen} />
       <Tab.Screen name="Profile" component={ProfileStack} />
