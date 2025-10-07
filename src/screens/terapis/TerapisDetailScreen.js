@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,9 +8,11 @@ import {
   TouchableOpacity,
   Dimensions,
   useColorScheme,
+  ActivityIndicator,
 } from 'react-native';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import Header from '../../components/Header';
+import Api from '../../utils/Api';
 
 const { width } = Dimensions.get('window');
 
@@ -18,6 +20,8 @@ const TerapisDetailScreen = ({ route, navigation }) => {
   const { therapist } = route.params;
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const colors = {
     background: isDark ? '#000' : '#fff',
@@ -34,6 +38,25 @@ const TerapisDetailScreen = ({ route, navigation }) => {
     therapist.status_therapist === 'available'
       ? { label: 'Available', color: '#4CAF50', icon: 'ellipse' }
       : { label: 'Busy', color: '#E53935', icon: 'ellipse' };
+
+  // 🔹 Ambil data review
+  const fetchReviews = async () => {
+    try {
+      setLoading(true);
+      const response = await Api.get(
+        `/reviews/therapist/${therapist.id_therapist}`,
+      );
+      setReviews(response.data?.data || []);
+    } catch (error) {
+      console.error('Gagal memuat review:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReviews();
+  }, []);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -65,13 +88,11 @@ const TerapisDetailScreen = ({ route, navigation }) => {
             }}
             style={styles.avatar}
           />
-
           <View style={styles.profileInfo}>
             <Text style={[styles.name, { color: colors.textPrimary }]}>
               {therapist.name}
             </Text>
 
-            {/* 🔹 Status Terapis */}
             <View style={styles.statusRow}>
               <Ionicons
                 name={status.icon}
@@ -114,7 +135,7 @@ const TerapisDetailScreen = ({ route, navigation }) => {
           </View>
         </View>
 
-        {/* Statistik dengan ikon */}
+        {/* Statistik */}
         <View style={styles.statsRow}>
           {[
             { icon: 'people-outline', label: 'Pasien', value: '2,000+' },
@@ -127,7 +148,7 @@ const TerapisDetailScreen = ({ route, navigation }) => {
             {
               icon: 'chatbubbles-outline',
               label: 'Reviews',
-              value: therapist.total_reviews || 0,
+              value: therapist.total_reviews || reviews.length,
             },
           ].map((item, i) => (
             <View key={i} style={styles.statBox}>
@@ -181,44 +202,65 @@ const TerapisDetailScreen = ({ route, navigation }) => {
             </TouchableOpacity>
           </View>
 
-          <View
-            style={[
-              styles.reviewCard,
-              { backgroundColor: colors.subCard, shadowColor: colors.border },
-            ]}
-          >
-            <View style={styles.reviewTop}>
-              <Image
-                source={{
-                  uri: 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
-                }}
-                style={styles.reviewAvatar}
-              />
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={[styles.reviewName, { color: colors.textPrimary }]}
-                >
-                  Maria
-                </Text>
-                <View style={{ flexDirection: 'row', marginTop: 2 }}>
-                  {Array(5)
-                    .fill(0)
-                    .map((_, idx) => (
-                      <Ionicons
-                        key={idx}
-                        name="star"
-                        size={14}
-                        color="#FFD700"
-                      />
-                    ))}
-                </View>
-              </View>
-            </View>
-            <Text style={[styles.reviewText, { color: colors.textSecondary }]}>
-              “Bagus banget, dijelaskan secara rinci, sampai kadang ngobrol jadi
-              merasa nyaman banget.”
+          {loading ? (
+            <ActivityIndicator
+              size="small"
+              color={colors.accent}
+              style={{ marginTop: 12 }}
+            />
+          ) : reviews.length === 0 ? (
+            <Text style={{ color: colors.textMuted, marginTop: 10 }}>
+              Belum ada review untuk terapis ini.
             </Text>
-          </View>
+          ) : (
+            reviews.slice(0, 3).map((review, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.reviewCard,
+                  {
+                    backgroundColor: colors.subCard,
+                    shadowColor: colors.border,
+                  },
+                ]}
+              >
+                <View style={styles.reviewTop}>
+                  <Image
+                    source={{
+                      uri:
+                        review.user?.photo ||
+                        'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
+                    }}
+                    style={styles.reviewAvatar}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[styles.reviewName, { color: colors.textPrimary }]}
+                    >
+                      {review.user?.user_name || 'Anonim'}
+                    </Text>
+                    <View style={{ flexDirection: 'row', marginTop: 2 }}>
+                      {Array(5)
+                        .fill(0)
+                        .map((_, idx) => (
+                          <Ionicons
+                            key={idx}
+                            name={idx < review.rating ? 'star' : 'star-outline'}
+                            size={14}
+                            color="#FFD700"
+                          />
+                        ))}
+                    </View>
+                  </View>
+                </View>
+                <Text
+                  style={[styles.reviewText, { color: colors.textSecondary }]}
+                >
+                  {review.comment || '(Tanpa komentar)'}
+                </Text>
+              </View>
+            ))
+          )}
         </View>
       </ScrollView>
 
@@ -248,21 +290,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     marginBottom: 16,
   },
-  avatar: {
-    width: width * 0.22,
-    height: width * 0.22,
-    borderRadius: 12,
-  },
-  profileInfo: {
-    marginLeft: 12,
-    flex: 1,
-  },
+  avatar: { width: width * 0.22, height: width * 0.22, borderRadius: 12 },
+  profileInfo: { marginLeft: 12, flex: 1 },
   name: { fontSize: 17, fontWeight: '700', textTransform: 'capitalize' },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-  },
+  statusRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   statusText: { fontSize: 13, fontWeight: '600' },
   specialization: { fontSize: 14, marginTop: 2 },
   locationRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },

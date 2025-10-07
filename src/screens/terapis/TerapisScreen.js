@@ -12,52 +12,54 @@ import {
   ScrollView,
   RefreshControl,
   Platform,
+  Modal,
+  Pressable,
 } from 'react-native';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import Header from '../../components/Header';
 import { useNavigation } from '@react-navigation/native';
 import Api from '../../utils/Api';
-import { useGlobal } from '../../context/GlobalContext'; // Impor useGlobal
+import { useGlobal } from '../../context/GlobalContext';
 
 const { width } = Dimensions.get('window');
 const FILTERS = ['All', 'Available', 'Busy'];
 
+const sortOptions = [
+  { key: 'name', label: 'Nama (A-Z)' },
+  { key: 'status', label: 'Status' },
+  { key: 'newest', label: 'Terbaru' },
+  { key: 'oldest', label: 'Terlama' },
+];
+
 const TerapisScreen = () => {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
-  const { showToast, showLoading, hideLoading } = useGlobal(); // Akses fungsi global
+  const { showToast, showLoading, hideLoading } = useGlobal();
   const [search, setSearch] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('All');
   const [therapists, setTherapists] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showSortModal, setShowSortModal] = useState(false);
+  const [sortBy, setSortBy] = useState('name');
   const navigation = useNavigation();
 
-  // 🔹 Ambil data terapis
   const fetchTherapists = async () => {
-    showLoading(); // Menampilkan spinner global
-
+    showLoading();
     try {
       const res = await Api.get('/therapists');
       if (res.data?.status === 'success') {
         setTherapists(res.data.data);
-        hideLoading(); // Menyembunyikan spinner
-        showToast(
-          'Data terapis berhasil diambil',
-          'Data terapis diperbarui',
-          'success',
-        ); // Menampilkan toast sukses
+        showToast('Data terapis berhasil diambil', '', 'success');
       }
     } catch (err) {
       console.error('Error fetching therapists:', err);
-      hideLoading(); // Menyembunyikan spinner
       showToast(
         'Gagal mengambil data',
         'Terjadi kesalahan saat mengambil data terapis',
         'error',
-      ); // Menampilkan toast error
+      );
     } finally {
-      setLoading(false);
+      hideLoading();
       setRefreshing(false);
     }
   };
@@ -71,14 +73,26 @@ const TerapisScreen = () => {
     fetchTherapists();
   };
 
-  const filteredData = therapists.filter(item => {
-    const matchSearch = item.name?.toLowerCase().includes(search.toLowerCase());
-    const matchFilter =
-      selectedFilter === 'All'
-        ? true
-        : item.status_therapist === selectedFilter.toLowerCase();
-    return matchSearch && matchFilter;
-  });
+  // 🔍 Filter & Sort
+  const filteredData = therapists
+    .filter(item => {
+      const matchSearch = item.name
+        ?.toLowerCase()
+        .includes(search.toLowerCase());
+      const matchFilter =
+        selectedFilter === 'All'
+          ? true
+          : item.status_therapist === selectedFilter.toLowerCase();
+      return matchSearch && matchFilter;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'name') return a.name.localeCompare(b.name);
+      if (sortBy === 'status')
+        return a.status_therapist.localeCompare(b.status_therapist);
+      if (sortBy === 'newest') return b.id_therapist - a.id_therapist;
+      if (sortBy === 'oldest') return a.id_therapist - b.id_therapist;
+      return 0;
+    });
 
   const renderItem = ({ item }) => {
     const status =
@@ -203,10 +217,10 @@ const TerapisScreen = () => {
       style={[styles.container, { backgroundColor: isDark ? '#000' : '#fff' }]}
     >
       <Header
-        title="Cari Terapis"
+        title="Daftar Terapis"
+        showLocation={false}
         showBack={false}
-        showCart={false}
-        showMessage={false}
+        showMessage={true}
       />
 
       {/* 🔍 Search bar */}
@@ -272,13 +286,19 @@ const TerapisScreen = () => {
         ))}
       </ScrollView>
 
-      {/* Menampilkan Data */}
+      {/* Header hasil + Sort */}
       <View style={styles.resultHeader}>
         <Text style={[styles.countText, { color: isDark ? '#fff' : '#000' }]}>
           {filteredData.length} ditemukan
         </Text>
-        <TouchableOpacity style={styles.sortButton}>
-          <Text style={{ color: isDark ? '#fff' : '#000' }}>Default </Text>
+        <TouchableOpacity
+          style={styles.sortButton}
+          onPress={() => setShowSortModal(true)}
+        >
+          <Text style={{ color: isDark ? '#fff' : '#000', marginRight: 4 }}>
+            {sortOptions.find(opt => opt.key === sortBy)?.label.split(' ')[0] ||
+              'Default'}{' '}
+          </Text>
           <Ionicons
             name="swap-vertical-outline"
             size={16}
@@ -287,6 +307,7 @@ const TerapisScreen = () => {
         </TouchableOpacity>
       </View>
 
+      {/* Daftar Terapis */}
       <FlatList
         style={{ flex: 1, marginTop: 4 }}
         data={filteredData}
@@ -305,6 +326,66 @@ const TerapisScreen = () => {
           />
         }
       />
+
+      {/* Modal Sort */}
+      <Modal
+        visible={showSortModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSortModal(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowSortModal(false)}
+        >
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: isDark ? '#1a1a1a' : '#fff' },
+            ]}
+          >
+            <Text
+              style={[styles.modalTitle, { color: isDark ? '#fff' : '#000' }]}
+            >
+              Urutkan Berdasarkan
+            </Text>
+
+            {sortOptions.map(option => (
+              <TouchableOpacity
+                key={option.key}
+                style={styles.modalItem}
+                onPress={() => {
+                  setSortBy(option.key);
+                  setShowSortModal(false);
+                }}
+              >
+                <Text
+                  style={{
+                    color:
+                      sortBy === option.key
+                        ? isDark
+                          ? '#4da6ff'
+                          : '#007bff'
+                        : isDark
+                        ? '#fff'
+                        : '#000',
+                    fontWeight: sortBy === option.key ? '600' : '400',
+                  }}
+                >
+                  {option.label}
+                </Text>
+                {sortBy === option.key && (
+                  <Ionicons
+                    name="checkmark-outline"
+                    size={18}
+                    color={isDark ? '#4da6ff' : '#007bff'}
+                  />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
@@ -320,11 +401,7 @@ const styles = StyleSheet.create({
     margin: 16,
     height: 42,
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    paddingVertical: 0,
-  },
+  searchInput: { flex: 1, fontSize: 15, paddingVertical: 0 },
   chip: {
     borderRadius: 20,
     paddingVertical: 8,
@@ -346,57 +423,44 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     marginBottom: 16,
-    backgroundColor: '#fff',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 6,
     elevation: 6,
-    overflow: Platform.OS === 'ios' ? 'visible' : 'hidden',
     position: 'relative',
   },
-  avatar: {
-    width: width * 0.2,
-    height: width * 0.2,
-    borderRadius: 10,
-  },
-  infoContainer: {
-    flex: 1,
-    marginLeft: 12,
-    justifyContent: 'center',
-  },
+  avatar: { width: width * 0.2, height: width * 0.2, borderRadius: 10 },
+  infoContainer: { flex: 1, marginLeft: 12, justifyContent: 'center' },
   name: { fontSize: 16, fontWeight: '700', textTransform: 'capitalize' },
   specialization: { fontSize: 14, marginTop: 4 },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 3,
-  },
+  statusRow: { flexDirection: 'row', alignItems: 'center', marginTop: 3 },
   statusText: { fontSize: 13 },
   location: { marginLeft: 4, fontSize: 13 },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-  },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
   rating: { fontSize: 14, fontWeight: '600', marginLeft: 4 },
   reviewCount: { fontSize: 13, marginLeft: 4 },
   row: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
-  heartButton: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-  },
-  filterScrollView: {
-    flexGrow: 0,
-    maxHeight: 70,
-    zIndex: 10,
-    elevation: 4,
-    marginBottom: 8,
-  },
-  filterScrollContent: {
-    paddingHorizontal: 16,
+  heartButton: { position: 'absolute', top: 10, right: 10 },
+  filterScrollView: { flexGrow: 0, maxHeight: 70, marginBottom: 8 },
+  filterScrollContent: { paddingHorizontal: 16, alignItems: 'center' },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
     alignItems: 'center',
+  },
+  modalContent: { width: '75%', borderRadius: 10, paddingVertical: 14 },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  modalItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
   },
 });
 

@@ -1,15 +1,16 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Dimensions, useColorScheme } from 'react-native';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // ✅ Tambahkan
 
 import HomeStack from './HomeStack';
 import BookStack from './BookStack';
 import ProfileStack from './ProfileStack';
 import TerapisStack from './TerapisStack';
-
 import HistoryScreen from '../screens/riwayat/HistoryScreen';
+import UsersScreen from '../screens/users/UsersScreen'; // ✅ Buat file ini nanti
 
 const Tab = createBottomTabNavigator();
 const { height, width } = Dimensions.get('window');
@@ -19,19 +20,35 @@ const MainScreen = () => {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
 
+  const [userRole, setUserRole] = useState(null); // ✅ simpan role
+
+  useEffect(() => {
+    const getUserRole = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('user');
+        if (userData) {
+          const parsed = JSON.parse(userData);
+          setUserRole(parsed.role); // pastikan field “role” ada di respons login
+        }
+      } catch (err) {
+        console.log('Error reading role:', err);
+      }
+    };
+    getUserRole();
+  }, []);
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarIcon: ({ color, size }) => {
           let iconName;
-
           switch (route.name) {
             case 'Home':
               iconName = 'home-outline';
               break;
             case 'Terapis':
-              iconName = 'search-outline';
+              iconName = 'fitness-outline';
               break;
             case 'Book':
               iconName = 'calendar-outline';
@@ -39,13 +56,15 @@ const MainScreen = () => {
             case 'Riwayat':
               iconName = 'time-outline';
               break;
+            case 'Pengguna':
+              iconName = 'people-outline'; // 👥 icon untuk tab baru
+              break;
             case 'Profile':
               iconName = 'person-outline';
               break;
             default:
               iconName = 'ellipse-outline';
           }
-
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: isDark ? '#4da6ff' : '#007BFF',
@@ -68,6 +87,12 @@ const MainScreen = () => {
       <Tab.Screen name="Terapis" component={TerapisStack} />
       <Tab.Screen name="Book" component={BookStack} />
       <Tab.Screen name="Riwayat" component={HistoryScreen} />
+
+      {/* ✅ Tambah tab Pengguna hanya untuk admin */}
+      {userRole === 'admin' && (
+        <Tab.Screen name="Pengguna" component={UsersScreen} />
+      )}
+
       <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
   );

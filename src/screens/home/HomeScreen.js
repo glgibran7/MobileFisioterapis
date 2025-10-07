@@ -27,22 +27,27 @@ const slides = [
 
 const categories = [
   { id: 1, name: 'Terapi Hati', color: '#DC9497', icon: 'fitness-outline' },
-  { id: 2, name: 'Meditasi Hati', color: '#93C19D', icon: 'leaf-outline' },
-  { id: 3, name: 'Pengobatan Hati', color: '#F5AD7D', icon: 'medkit-outline' },
-  { id: 4, name: 'Pelari Kalcer', color: '#ACA1CC', icon: 'walk-outline' },
-  { id: 5, name: 'Rehabilitasi Hati', color: '#4E9B91', icon: 'body-outline' },
-  { id: 6, name: 'Konsultasi Hati', color: '#352361', icon: 'person-outline' },
+  { id: 2, name: 'Meditasi Hati', color: '#93C19D', icon: 'fitness-outline' },
+  { id: 3, name: 'Pengobatan Hati', color: '#F5AD7D', icon: 'fitness-outline' },
+  { id: 4, name: 'Pelari Kalcer', color: '#ACA1CC', icon: 'fitness-outline' },
+  {
+    id: 5,
+    name: 'Rehabilitasi Hati',
+    color: '#4E9B91',
+    icon: 'fitness-outline',
+  },
+  { id: 6, name: 'Konsultasi Hati', color: '#352361', icon: 'fitness-outline' },
   {
     id: 7,
     name: 'Dilarang Main Hati',
     color: '#DEB6B6',
-    icon: 'hand-left-outline',
+    icon: 'fitness-outline',
   },
   {
     id: 8,
     name: 'Senam Jantung',
     color: '#89CCDC',
-    icon: 'accessibility-outline',
+    icon: 'fitness-outline',
   },
 ];
 

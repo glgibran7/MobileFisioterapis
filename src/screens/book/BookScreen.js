@@ -10,6 +10,9 @@ import {
   Dimensions,
   RefreshControl,
   Alert,
+  TextInput,
+  Modal,
+  Pressable,
 } from 'react-native';
 import Header from '../../components/Header';
 import Ionicons from '@react-native-vector-icons/ionicons';
@@ -27,9 +30,13 @@ const BookScreen = () => {
   const [activeTab, setActiveTab] = useState('Upcoming');
   const [bookings, setBookings] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [user, setUser] = useState(null); // ✅ Tambah state user
+  const [user, setUser] = useState(null);
+  const [showSortModal, setShowSortModal] = useState(false);
 
-  // 🔹 Ambil data user dari AsyncStorage saat screen dibuka
+  // Search & Sort
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState('desc');
+
   useEffect(() => {
     const loadUser = async () => {
       const storedUser = await AsyncStorage.getItem('user');
@@ -71,7 +78,7 @@ const BookScreen = () => {
   const handleDeleteBooking = async id_booking => {
     Alert.alert(
       'Konfirmasi Pembatalan',
-      'Apakah kamu yakin ingin membatalkan booking ini?',
+      'Yakin ingin menghapus permintaan booking?',
       [
         { text: 'Tidak', style: 'cancel' },
         {
@@ -85,30 +92,20 @@ const BookScreen = () => {
                 res = await Api.delete(`/bookings/${id_booking}`);
               } catch (err) {
                 if (err.response?.status === 404) {
-                  res = await Api.delete('/bookings', {
-                    data: { id_booking },
-                  });
-                } else {
-                  throw err;
-                }
+                  res = await Api.delete('/bookings', { data: { id_booking } });
+                } else throw err;
               }
-
               hideLoading();
 
               if (res?.data?.status === 'success') {
-                showToast('Sukses', 'Booking berhasil dibatalkan', 'success');
+                showToast('Sukses', 'Booking dibatalkan', 'success');
                 fetchBookings(false);
               } else {
-                showToast('Gagal', 'Tidak dapat membatalkan booking', 'error');
+                showToast('Gagal', 'Tidak dapat membatalkan', 'error');
               }
             } catch (err) {
               hideLoading();
-              console.error('Delete error:', err);
-              showToast(
-                'Terjadi Kesalahan',
-                'Gagal membatalkan booking',
-                'error',
-              );
+              showToast('Error', 'Gagal membatalkan booking', 'error');
             }
           },
         },
@@ -116,55 +113,68 @@ const BookScreen = () => {
     );
   };
 
-  const handleConfirmBooking = async id_booking => {
-    Alert.alert(
-      'Konfirmasi Booking',
-      'Apakah kamu yakin ingin mengonfirmasi booking ini?',
-      [
-        { text: 'Batal', style: 'cancel' },
-        {
-          text: 'Ya, Konfirmasi',
-          onPress: async () => {
-            try {
-              showLoading();
-              const res = await Api.put(`/bookings/${id_booking}/status`, {
-                status_booking: 'accepted',
-              });
-              hideLoading();
+  // 🔹 Fungsi dinamis: confirm / reject / dll
+  const handleUpdateStatus = async (id_booking, status) => {
+    const actionLabel =
+      status === 'accepted'
+        ? 'konfirmasi'
+        : status === 'rejected'
+        ? 'tolak'
+        : 'ubah status';
 
-              if (res?.data?.status === 'success') {
-                showToast('Sukses', 'Booking telah dikonfirmasi', 'success');
-                fetchBookings(false);
-              } else {
-                showToast(
-                  'Gagal',
-                  'Tidak dapat mengonfirmasi booking',
-                  'error',
-                );
-              }
-            } catch (err) {
-              hideLoading();
-              console.error('Confirm error:', err);
+    Alert.alert('Konfirmasi Aksi', `Yakin ingin ${actionLabel} booking ini?`, [
+      { text: 'Batal', style: 'cancel' },
+      {
+        text: 'Ya, Lanjutkan',
+        onPress: async () => {
+          try {
+            showLoading();
+            const res = await Api.put(
+              `/bookings/${id_booking}/status?status_booking=${status}`,
+            );
+            hideLoading();
+
+            if (res?.data?.status === 'success') {
               showToast(
-                'Terjadi Kesalahan',
-                'Gagal mengonfirmasi booking',
-                'error',
+                'Sukses',
+                `Booking berhasil di${actionLabel}`,
+                'success',
               );
+              fetchBookings(false);
+            } else {
+              showToast('Gagal', `Tidak dapat ${actionLabel}`, 'error');
             }
-          },
+          } catch (err) {
+            hideLoading();
+            console.log('Update Status Error:', err.response || err);
+            showToast('Error', `Gagal ${actionLabel} booking`, 'error');
+          }
         },
-      ],
-    );
+      },
+    ]);
   };
 
-  const filteredBookings = bookings.filter(b => {
-    if (activeTab === 'Upcoming') return b.status_booking === 'pending';
-    if (activeTab === 'Accepted') return b.status_booking === 'accepted';
-    if (activeTab === 'Completed') return b.status_booking === 'completed';
-    if (activeTab === 'Canceled') return b.status_booking === 'canceled';
-    return true;
-  });
-
+  // Filter, Search, Sort
+  const filteredBookings = bookings
+    .filter(b => {
+      if (activeTab === 'Upcoming') return b.status_booking === 'pending';
+      if (activeTab === 'Accepted') return b.status_booking === 'accepted';
+      if (activeTab === 'Completed') return b.status_booking === 'completed';
+      if (activeTab === 'Rejected') return b.status_booking === 'rejected';
+      return true;
+    })
+    .filter(b => {
+      const q = searchQuery.toLowerCase();
+      return (
+        b.therapist_name?.toLowerCase().includes(q) ||
+        b.user_name?.toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => {
+      const dateA = new Date(a.booking_time);
+      const dateB = new Date(b.booking_time);
+      return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+    });
   const renderBookingCard = ({ item }) => {
     const dateObj = new Date(item.booking_time);
     const formattedDate = dateObj.toLocaleDateString('id-ID', {
@@ -187,6 +197,20 @@ const BookScreen = () => {
           },
         ]}
       >
+        {/* 🔹 Tombol hapus di pojok kanan atas (hanya di Upcoming) */}
+        {activeTab === 'Upcoming' && (
+          <TouchableOpacity
+            style={styles.deleteIconBtn}
+            onPress={() => handleDeleteBooking(item.id_booking)}
+          >
+            <Ionicons
+              name="trash-outline"
+              size={18}
+              color={isDark ? '#fff' : '#b00000'}
+            />
+          </TouchableOpacity>
+        )}
+
         <Text style={[styles.dateText, { color: '#0A84FF' }]}>
           {formattedDate} - {formattedTime} WITA
         </Text>
@@ -200,7 +224,6 @@ const BookScreen = () => {
             }}
             style={styles.avatar}
           />
-
           <View style={{ flex: 1, marginLeft: 10 }}>
             <Text
               style={[styles.name, { color: isDark ? '#fff' : '#000' }]}
@@ -240,16 +263,62 @@ const BookScreen = () => {
           </Text>
         ) : null}
 
-        {/* Tombol hanya untuk Upcoming & Accepted */}
-        {['Upcoming', 'Accepted'].includes(activeTab) && (
+        {/* 🔹 Tombol aksi */}
+        {activeTab === 'Upcoming' && user?.role !== 'user' && (
           <View style={styles.buttonRow}>
+            {/* 🔴 Reject */}
             <TouchableOpacity
               style={[
-                styles.cancelBtn,
+                styles.actionBtn,
+                { backgroundColor: '#FFD6D6', flexDirection: 'row' },
+              ]}
+              onPress={() => handleUpdateStatus(item.id_booking, 'rejected')}
+            >
+              <Ionicons
+                name="close-circle-outline"
+                size={18}
+                color="#b00000"
+                style={{ marginRight: 6 }}
+              />
+              <Text style={[styles.btnText, { color: '#b00000' }]}>Reject</Text>
+            </TouchableOpacity>
+
+            {/* 🔵 Confirm */}
+            <TouchableOpacity
+              style={[
+                styles.actionBtn,
+                { backgroundColor: '#0A84FF', flexDirection: 'row' },
+              ]}
+              onPress={() => handleUpdateStatus(item.id_booking, 'accepted')}
+            >
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={18}
+                color="#fff"
+                style={{ marginRight: 6 }}
+              />
+              <Text style={[styles.btnText, { color: '#fff' }]}>Konfirm</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* 🟢 Tab Accepted */}
+        {activeTab === 'Accepted' && (
+          <View style={styles.buttonRow}>
+            {/* 🗑️ Cancel/Delete */}
+            <TouchableOpacity
+              style={[
+                styles.actionBtn,
                 { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' },
               ]}
               onPress={() => handleDeleteBooking(item.id_booking)}
             >
+              <Ionicons
+                name="trash-outline"
+                size={18}
+                color={isDark ? '#fff' : '#000'}
+                style={{ marginRight: 6 }}
+              />
               <Text
                 style={[styles.btnText, { color: isDark ? '#fff' : '#000' }]}
               >
@@ -257,15 +326,22 @@ const BookScreen = () => {
               </Text>
             </TouchableOpacity>
 
-            {/* ✅ Tampilkan tombol Konfirm hanya jika bukan role 'user' */}
-            {user?.role !== 'user' && (
-              <TouchableOpacity
-                style={[styles.rescheduleBtn, { backgroundColor: '#0A84FF' }]}
-                onPress={() => handleConfirmBooking(item.id_booking)}
-              >
-                <Text style={[styles.btnText, { color: '#fff' }]}>Konfirm</Text>
-              </TouchableOpacity>
-            )}
+            {/* ✅ Completed */}
+            <TouchableOpacity
+              style={[
+                styles.actionBtn,
+                { backgroundColor: '#28a745', flexDirection: 'row' },
+              ]}
+              onPress={() => handleUpdateStatus(item.id_booking, 'completed')}
+            >
+              <Ionicons
+                name="checkmark-done-outline"
+                size={18}
+                color="#fff"
+                style={{ marginRight: 6 }}
+              />
+              <Text style={[styles.btnText, { color: '#fff' }]}>Completed</Text>
+            </TouchableOpacity>
           </View>
         )}
       </View>
@@ -276,14 +352,105 @@ const BookScreen = () => {
     <View
       style={[styles.container, { backgroundColor: isDark ? '#000' : '#fff' }]}
     >
-      <Header
-        title="My Bookings"
-        showBack={false}
-        showLocation={false}
-        showCart={false}
-        showMessage={false}
-      />
+      <Header title="My Bookings" showBack={false} />
 
+      {/* 🔍 Search bar + Sort icon */}
+      <View
+        style={[
+          styles.searchContainer,
+          {
+            backgroundColor: isDark ? '#111' : '#f9f9f9',
+            borderColor: isDark ? '#444' : '#ddd',
+          },
+        ]}
+      >
+        <Ionicons
+          name="search-outline"
+          size={20}
+          color={isDark ? '#ccc' : '#555'}
+          style={{ marginRight: 6 }}
+        />
+        <TextInput
+          style={[styles.searchInput, { color: isDark ? '#fff' : '#000' }]}
+          placeholder="Cari booking..."
+          placeholderTextColor={isDark ? '#777' : '#999'}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+
+        <TouchableOpacity onPress={() => setShowSortModal(true)}>
+          <Ionicons
+            name="swap-vertical-outline"
+            size={22}
+            color={isDark ? '#4da6ff' : '#007bff'}
+          />
+        </TouchableOpacity>
+      </View>
+
+      {/* Modal Sort */}
+      <Modal
+        visible={showSortModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSortModal(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowSortModal(false)}
+        >
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: isDark ? '#1a1a1a' : '#fff' },
+            ]}
+          >
+            <Text
+              style={[styles.modalTitle, { color: isDark ? '#fff' : '#000' }]}
+            >
+              Urutkan Berdasarkan
+            </Text>
+
+            {[
+              { key: 'desc', label: 'Terbaru' },
+              { key: 'asc', label: 'Terlama' },
+            ].map(option => (
+              <TouchableOpacity
+                key={option.key}
+                style={styles.modalItem}
+                onPress={() => {
+                  setSortOrder(option.key);
+                  setShowSortModal(false);
+                }}
+              >
+                <Text
+                  style={{
+                    color:
+                      sortOrder === option.key
+                        ? isDark
+                          ? '#4da6ff'
+                          : '#007bff'
+                        : isDark
+                        ? '#fff'
+                        : '#000',
+                    fontWeight: sortOrder === option.key ? '600' : '400',
+                  }}
+                >
+                  {option.label}
+                </Text>
+                {sortOrder === option.key && (
+                  <Ionicons
+                    name="checkmark-outline"
+                    size={18}
+                    color={isDark ? '#4da6ff' : '#007bff'}
+                  />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* Tabs */}
       <View
         style={[
           styles.tabContainer,
@@ -293,7 +460,7 @@ const BookScreen = () => {
           },
         ]}
       >
-        {['Upcoming', 'Accepted', 'Completed', 'Canceled'].map(tab => (
+        {['Upcoming', 'Accepted', 'Completed', 'Rejected'].map(tab => (
           <TouchableOpacity
             key={tab}
             style={styles.tabItem}
@@ -315,6 +482,7 @@ const BookScreen = () => {
         ))}
       </View>
 
+      {/* List */}
       <FlatList
         data={filteredBookings}
         renderItem={renderBookingCard}
@@ -346,21 +514,6 @@ const BookScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  tabContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-  },
-  tabItem: { alignItems: 'center', paddingVertical: 6 },
-  tabText: { fontSize: 15, fontWeight: '600' },
-  activeLine: {
-    height: 3,
-    backgroundColor: '#0A84FF',
-    width: 30,
-    borderRadius: 10,
-    marginTop: 4,
-  },
   card: {
     borderRadius: 14,
     padding: 14,
@@ -384,21 +537,74 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 12,
   },
-  cancelBtn: {
+  actionBtn: {
     flex: 1,
     paddingVertical: 10,
     borderRadius: 10,
     alignItems: 'center',
-    marginRight: 8,
-  },
-  rescheduleBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginLeft: 8,
+    justifyContent: 'center',
+    marginHorizontal: 4,
   },
   btnText: { fontSize: 14, fontWeight: '600' },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    margin: 16,
+    height: 42,
+    justifyContent: 'space-between',
+  },
+  searchInput: { flex: 1, fontSize: 15, paddingVertical: 0 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '75%',
+    borderRadius: 10,
+    paddingVertical: 14,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  modalItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  tabItem: { alignItems: 'center', paddingVertical: 6 },
+  tabText: { fontSize: 15, fontWeight: '600' },
+  activeLine: {
+    height: 3,
+    backgroundColor: '#0A84FF',
+    width: 30,
+    borderRadius: 10,
+    marginTop: 4,
+  },
+  deleteIconBtn: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,0,0,0.1)',
+    zIndex: 5,
+  },
 });
 
 export default BookScreen;
