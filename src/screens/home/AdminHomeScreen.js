@@ -5,15 +5,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Image,
   ScrollView,
   useColorScheme,
   RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import Api from '../../utils/Api';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import Header from '../../components/Header';
+import Api from '../../utils/Api';
 
 const AdminHomeScreen = () => {
   const navigation = useNavigation();
@@ -29,13 +28,11 @@ const AdminHomeScreen = () => {
   const isDark = scheme === 'dark';
 
   const colors = {
-    primary: isDark ? '#fff' : '#000',
     bg: isDark ? '#000' : '#FFF',
-    card: isDark ? '#111' : '#F8FAFF',
-    text: isDark ? '#FFF' : '#111',
+    card: isDark ? '#111' : '#F8F8F8',
+    text: isDark ? '#FFF' : '#000',
     subText: isDark ? '#AAA' : '#555',
-    border: isDark ? '#222' : '#E0E0E0',
-    shadow: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.1)',
+    border: isDark ? '#333' : '#DDD',
   };
 
   useEffect(() => {
@@ -50,7 +47,7 @@ const AdminHomeScreen = () => {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const res = await Api.get('/admin/stats'); // <-- sesuaikan endpoint kamu
+      const res = await Api.get('/admin/stats');
       if (res.data?.status === 'success') {
         setStats({
           totalUsers: res.data.data.total_users || 0,
@@ -65,10 +62,16 @@ const AdminHomeScreen = () => {
     }
   };
 
+  const actionButtons = [
+    { label: 'Pengguna', icon: 'people-outline', screen: 'Pengguna' },
+    { label: 'Terapis', icon: 'fitness-outline', screen: 'Terapis' },
+    { label: 'Booking', icon: 'calendar-outline', screen: 'Book' },
+  ];
+
   return (
     <>
       <Header
-        title="Halo, Admin 👋"
+        title="Hi, Admin 👋"
         showLocation={false}
         showBack={false}
         showCart={false}
@@ -80,113 +83,81 @@ const AdminHomeScreen = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[colors.primary]}
-            progressBackgroundColor={isDark ? '#1A1A1A' : '#fff'}
-            tintColor={colors.primary}
+            colors={[colors.text]}
+            progressBackgroundColor={isDark ? '#1A1A1A' : '#FFF'}
+            tintColor={colors.text}
           />
         }
       >
+        {/* <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          Statistik
+        </Text> */}
         {/* 🧾 Statistik Admin */}
         <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Ionicons name="people-outline" size={24} color={colors.primary} />
-            <Text style={[styles.statValue, { color: colors.primary }]}>
-              {stats.totalUsers}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.subText }]}>
-              Total Pengguna
-            </Text>
-          </View>
-
-          <View style={styles.statItem}>
-            <Ionicons name="fitness-outline" size={24} color={colors.primary} />
-            <Text style={[styles.statValue, { color: colors.primary }]}>
-              {stats.totalTherapists}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.subText }]}>
-              Total Terapis
-            </Text>
-          </View>
-
-          <View style={styles.statItem}>
-            <Ionicons
-              name="calendar-outline"
-              size={24}
-              color={colors.primary}
-            />
-            <Text style={[styles.statValue, { color: colors.primary }]}>
-              {stats.totalBookings}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.subText }]}>
-              Total Booking
-            </Text>
-          </View>
+          {[
+            {
+              icon: 'people-outline',
+              label: 'Total Pengguna',
+              value: stats.totalUsers,
+            },
+            {
+              icon: 'fitness-outline',
+              label: 'Total Terapis',
+              value: stats.totalTherapists,
+            },
+            {
+              icon: 'calendar-outline',
+              label: 'Total Booking',
+              value: stats.totalBookings,
+            },
+          ].map((item, index) => (
+            <View
+              key={index}
+              style={[
+                styles.statItem,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <Ionicons name={item.icon} size={26} color={colors.text} />
+              <Text style={[styles.statValue, { color: colors.text }]}>
+                {item.value}
+              </Text>
+              <Text style={[styles.statLabel, { color: colors.subText }]}>
+                {item.label}
+              </Text>
+            </View>
+          ))}
         </View>
 
-        {/* 📦 Kartu Aksi Admin */}
-        <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              borderWidth: 1,
-              elevation: isDark ? 0 : 2,
-              shadowColor: colors.shadow,
-              shadowOpacity: isDark ? 0 : 0.12,
-            },
-          ]}
-        >
-          <Text style={[styles.cardTitle, { color: colors.primary }]}>
-            Kelola Data
-          </Text>
+        {/* 🔧 Kelola Data */}
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          Kelola Data
+        </Text>
 
+        {/* 📦 Grid Tombol Aksi */}
+        <View style={styles.actionsGrid}>
           {loading ? (
-            <ActivityIndicator color={colors.primary} />
+            <ActivityIndicator
+              size="large"
+              color={colors.text}
+              style={{ marginTop: 20 }}
+            />
           ) : (
-            <>
+            actionButtons.map((btn, idx) => (
               <TouchableOpacity
-                style={[styles.cardBtn, { borderColor: colors.primary }]}
-                onPress={() => navigation.navigate('Pengguna')}
+                key={idx}
+                style={[
+                  styles.actionBtn,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+                onPress={() => navigation.navigate(btn.screen)}
               >
-                <Ionicons
-                  name="people-outline"
-                  size={18}
-                  color={colors.primary}
-                />
-                <Text style={[styles.cardBtnText, { color: colors.primary }]}>
-                  Lihat Pengguna
+                <Ionicons name={btn.icon} size={26} color={colors.text} />
+                <Text style={[styles.actionBtnText, { color: colors.text }]}>
+                  {btn.label}
                 </Text>
               </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.cardBtn, { borderColor: colors.primary }]}
-                onPress={() => navigation.navigate('Terapis')}
-              >
-                <Ionicons
-                  name="fitness-outline"
-                  size={18}
-                  color={colors.primary}
-                />
-                <Text style={[styles.cardBtnText, { color: colors.primary }]}>
-                  Lihat Terapis
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.cardBtn, { borderColor: colors.primary }]}
-                onPress={() => navigation.navigate('Book')}
-              >
-                <Ionicons
-                  name="calendar-outline"
-                  size={18}
-                  color={colors.primary}
-                />
-                <Text style={[styles.cardBtnText, { color: colors.primary }]}>
-                  Lihat Booking
-                </Text>
-              </TouchableOpacity>
-            </>
+            ))
           )}
         </View>
       </ScrollView>
@@ -197,42 +168,48 @@ const AdminHomeScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20, paddingTop: 10 },
 
-  // 📈 Statistik
+  // Statistik
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 25,
   },
-  statItem: { alignItems: 'center', flex: 1 },
-  statValue: { fontSize: 18, fontWeight: '700', marginTop: 6 },
-  statLabel: { fontSize: 13 },
-
-  // 📦 Card
-  card: {
+  statItem: {
+    flex: 1,
+    marginHorizontal: 5,
+    alignItems: 'center',
     borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    marginBottom: 30,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  cardBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 10,
+    paddingVertical: 16,
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    width: '80%',
-    justifyContent: 'center',
   },
-  cardBtnText: { fontWeight: '600', marginLeft: 8 },
+  statValue: { fontSize: 18, fontWeight: '700', marginTop: 6 },
+  statLabel: { fontSize: 12, marginTop: 4 },
+
+  // Kelola Data
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 14,
+    marginLeft: 4,
+  },
+
+  // Tombol Aksi
+  actionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 30,
+  },
+  actionBtn: {
+    width: '48%',
+    paddingVertical: 18,
+    borderRadius: 14,
+    marginBottom: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  actionBtnText: { marginTop: 8, fontSize: 15, fontWeight: '600' },
 });
 
 export default AdminHomeScreen;

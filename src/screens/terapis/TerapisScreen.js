@@ -1,3 +1,4 @@
+// ... kode import di atas
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -21,6 +22,7 @@ import { useNavigation } from '@react-navigation/native';
 import Api from '../../utils/Api';
 import { useGlobal } from '../../context/GlobalContext';
 import { confirmAndDeleteTherapist } from './TherapistActions';
+import ModalTambahTerapis from './ModalTambahTerapis';
 
 const { width } = Dimensions.get('window');
 const FILTERS = ['All', 'Available', 'Busy'];
@@ -35,16 +37,16 @@ const sortOptions = [
 const TerapisScreen = () => {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
-  const { showToast, showLoading, hideLoading, user } = useGlobal(); // ✅ ambil user dari GlobalContext
+  const { showToast, showLoading, hideLoading, user } = useGlobal();
   const [search, setSearch] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('All');
   const [therapists, setTherapists] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [showSortModal, setShowSortModal] = useState(false);
+  const [showTambahModal, setShowTambahModal] = useState(false);
+
   const [sortBy, setSortBy] = useState('name');
   const navigation = useNavigation();
-
-  console.log('Current role:', user?.role); // ✅ debug aman
 
   const fetchTherapists = async () => {
     showLoading();
@@ -121,12 +123,10 @@ const TerapisScreen = () => {
             }}
             style={styles.avatar}
           />
-
           <View style={styles.infoContainer}>
             <Text style={[styles.name, { color: isDark ? '#fff' : '#000' }]}>
               {item.name}
             </Text>
-
             <View style={styles.statusRow}>
               <Ionicons
                 name={status.icon}
@@ -143,7 +143,6 @@ const TerapisScreen = () => {
                 {status.label}
               </Text>
             </View>
-
             <Text
               style={[
                 styles.specialization,
@@ -152,7 +151,6 @@ const TerapisScreen = () => {
             >
               {item.specialization || 'Spesialisasi tidak tersedia'}
             </Text>
-
             <View style={styles.row}>
               <Ionicons
                 name="call-outline"
@@ -165,7 +163,6 @@ const TerapisScreen = () => {
                 {item.phone || '-'}
               </Text>
             </View>
-
             <View style={styles.row}>
               <Ionicons
                 name="mail-outline"
@@ -178,7 +175,6 @@ const TerapisScreen = () => {
                 {item.email || '-'}
               </Text>
             </View>
-
             <View style={styles.ratingRow}>
               <Ionicons name="star" size={16} color="#FFD700" />
               <Text
@@ -197,7 +193,7 @@ const TerapisScreen = () => {
             </View>
           </View>
 
-          {/* ❤️ dan 🗑️ tombol */}
+          {/* Tombol Aksi */}
           <View style={styles.iconButtons}>
             <TouchableOpacity style={styles.iconBtn}>
               <Ionicons
@@ -207,7 +203,6 @@ const TerapisScreen = () => {
               />
             </TouchableOpacity>
 
-            {/* ✅ hanya admin bisa hapus */}
             {user?.role === 'admin' && (
               <TouchableOpacity
                 style={styles.iconBtn}
@@ -245,7 +240,7 @@ const TerapisScreen = () => {
         showMessage={true}
       />
 
-      {/* 🔍 Search */}
+      {/* Search */}
       <View
         style={[
           styles.searchContainer,
@@ -308,7 +303,7 @@ const TerapisScreen = () => {
         ))}
       </ScrollView>
 
-      {/* Hasil */}
+      {/* Header jumlah dan sort */}
       <View style={styles.resultHeader}>
         <Text style={[styles.countText, { color: isDark ? '#fff' : '#000' }]}>
           {filteredData.length} ditemukan
@@ -346,6 +341,33 @@ const TerapisScreen = () => {
         }
       />
 
+      {user?.role === 'admin' && (
+        <TouchableOpacity
+          style={{
+            position: 'absolute',
+            bottom: 25,
+            right: 25,
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: isDark ? '#4da6ff' : '#007bff',
+            justifyContent: 'center',
+            alignItems: 'center',
+            elevation: 5,
+          }}
+          onPress={() => setShowTambahModal(true)}
+        >
+          <Ionicons name="add" size={28} color="#fff" />
+        </TouchableOpacity>
+      )}
+
+      {/* Modal Tambah Terapis */}
+      <ModalTambahTerapis
+        visible={showTambahModal}
+        onClose={() => setShowTambahModal(false)}
+        onSuccess={fetchTherapists} // reload list setelah tambah
+      />
+
       {/* Modal Sort */}
       <Modal
         visible={showSortModal}
@@ -368,7 +390,6 @@ const TerapisScreen = () => {
             >
               Urutkan Berdasarkan
             </Text>
-
             {sortOptions.map(option => (
               <TouchableOpacity
                 key={option.key}
@@ -411,6 +432,7 @@ const TerapisScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -490,6 +512,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 10,
     paddingHorizontal: 20,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 25,
+    right: 25,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 5,
   },
 });
 
