@@ -9,10 +9,16 @@ import {
   Dimensions,
   useColorScheme,
   ActivityIndicator,
+  Alert,
+  Modal,
+  Pressable,
+  TextInput,
 } from 'react-native';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import Header from '../../components/Header';
 import Api from '../../utils/Api';
+import { useGlobal } from '../../context/GlobalContext';
+import { Picker } from '@react-native-picker/picker';
 
 const { width } = Dimensions.get('window');
 
@@ -20,8 +26,40 @@ const TerapisDetailScreen = ({ route, navigation }) => {
   const { therapist } = route.params;
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
+  const { user, showLoading, hideLoading, showToast } = useGlobal();
+
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const [editVisible, setEditVisible] = useState(false);
+  const [editData, setEditData] = useState({
+    bio: therapist.bio || '',
+    experience_years: therapist.experience_years || '',
+    specialization: therapist.specialization || '',
+    status_therapist: therapist.status_therapist || 'available',
+    working_hours: therapist.working_hours || '',
+  });
+
+  const handleEdit = async () => {
+    try {
+      showLoading();
+      await Api.put(`/therapists/${therapist.id_therapist}`, {
+        bio: editData.bio,
+        experience_years: parseInt(editData.experience_years) || 0,
+        specialization: editData.specialization,
+        status_therapist: editData.status_therapist,
+        working_hours: editData.working_hours,
+      });
+      hideLoading();
+      showToast('Berhasil', 'Data terapis berhasil diperbarui', 'success');
+      setEditVisible(false);
+      navigation.goBack();
+    } catch (error) {
+      hideLoading();
+      console.error(error);
+      showToast('Gagal', 'Tidak dapat memperbarui data terapis', 'error');
+    }
+  };
 
   const colors = {
     background: isDark ? '#000' : '#fff',
@@ -57,6 +95,38 @@ const TerapisDetailScreen = ({ route, navigation }) => {
   useEffect(() => {
     fetchReviews();
   }, []);
+
+  // 🔹 Hapus terapis (khusus admin)
+  const handleDelete = () => {
+    Alert.alert(
+      'Konfirmasi Hapus',
+      `Apakah Anda yakin ingin menghapus terapis ${therapist.name}?`,
+      [
+        { text: 'Batal', style: 'cancel' },
+        {
+          text: 'Hapus',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              showLoading();
+              await Api.delete(`/therapists/${therapist.id_therapist}`);
+              hideLoading();
+              showToast(
+                'Terapis dihapus',
+                `${therapist.name} telah dihapus`,
+                'success',
+              );
+              navigation.goBack();
+            } catch (error) {
+              hideLoading();
+              console.error(error);
+              showToast('Gagal', 'Tidak dapat menghapus terapis', 'error');
+            }
+          },
+        },
+      ],
+    );
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -134,6 +204,31 @@ const TerapisDetailScreen = ({ route, navigation }) => {
             </View>
           </View>
         </View>
+
+        {/* Tombol Hapus (Khusus Admin) */}
+        {/* Tombol Aksi Admin */}
+        {user?.role === 'admin' && (
+          <>
+            <TouchableOpacity
+              style={[
+                styles.deleteBtn,
+                { backgroundColor: '#2196F3', marginBottom: 10 },
+              ]}
+              onPress={() => setEditVisible(true)}
+            >
+              <Ionicons name="create-outline" size={18} color="#fff" />
+              <Text style={styles.deleteBtnText}>Edit Terapis</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.deleteBtn, { backgroundColor: '#E53935' }]}
+              onPress={handleDelete}
+            >
+              <Ionicons name="trash-outline" size={18} color="#fff" />
+              <Text style={styles.deleteBtnText}>Hapus Terapis</Text>
+            </TouchableOpacity>
+          </>
+        )}
 
         {/* Statistik */}
         <View style={styles.statsRow}>
@@ -264,15 +359,116 @@ const TerapisDetailScreen = ({ route, navigation }) => {
         </View>
       </ScrollView>
 
-      {/* Tombol Booking */}
-      <TouchableOpacity
-        style={[styles.bookBtn, { backgroundColor: colors.accent }]}
-        onPress={() =>
-          navigation.navigate('BookAppointmentScreen', { therapist })
-        }
-      >
-        <Text style={styles.bookBtnText}>Book Appointment</Text>
-      </TouchableOpacity>
+      {/* Tombol Booking - disembunyikan jika admin */}
+      {user?.role !== 'admin' && (
+        <TouchableOpacity
+          style={[styles.bookBtn, { backgroundColor: colors.accent }]}
+          onPress={() =>
+            navigation.navigate('BookAppointmentScreen', { therapist })
+          }
+        >
+          <Text style={styles.bookBtnText}>Book Appointment</Text>
+        </TouchableOpacity>
+      )}
+      {/* Modal Edit Terapis */}
+      <Modal visible={editVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View
+            style={[styles.modalContainer, { backgroundColor: colors.card }]}
+          >
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+              Edit Data Terapis
+            </Text>
+
+            <TextInput
+              style={[
+                styles.input,
+                { color: colors.textPrimary, borderColor: colors.border },
+              ]}
+              placeholder="Bio"
+              placeholderTextColor={colors.textMuted}
+              value={editData.bio}
+              onChangeText={text => setEditData({ ...editData, bio: text })}
+            />
+            <TextInput
+              style={[
+                styles.input,
+                { color: colors.textPrimary, borderColor: colors.border },
+              ]}
+              placeholder="Tahun Pengalaman"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="numeric"
+              value={String(editData.experience_years)}
+              onChangeText={text =>
+                setEditData({ ...editData, experience_years: text })
+              }
+            />
+            <TextInput
+              style={[
+                styles.input,
+                { color: colors.textPrimary, borderColor: colors.border },
+              ]}
+              placeholder="Spesialisasi"
+              placeholderTextColor={colors.textMuted}
+              value={editData.specialization}
+              onChangeText={text =>
+                setEditData({ ...editData, specialization: text })
+              }
+            />
+            <View
+              style={[
+                styles.input,
+                {
+                  borderColor: colors.border,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 0,
+                },
+              ]}
+            >
+              <Picker
+                selectedValue={editData.status_therapist}
+                style={{ flex: 1, color: colors.textPrimary }}
+                dropdownIconColor={colors.textPrimary}
+                onValueChange={itemValue =>
+                  setEditData({ ...editData, status_therapist: itemValue })
+                }
+              >
+                <Picker.Item label="Available" value="available" />
+                <Picker.Item label="Busy" value="busy" />
+              </Picker>
+            </View>
+
+            <TextInput
+              style={[
+                styles.input,
+                { color: colors.textPrimary, borderColor: colors.border },
+              ]}
+              placeholder="Jam Kerja"
+              placeholderTextColor={colors.textMuted}
+              value={editData.working_hours}
+              onChangeText={text =>
+                setEditData({ ...editData, working_hours: text })
+              }
+            />
+
+            <View style={styles.modalActions}>
+              <Pressable
+                style={[styles.modalBtn, { backgroundColor: '#4CAF50' }]}
+                onPress={handleEdit}
+              >
+                <Text style={styles.modalBtnText}>Simpan</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalBtn, { backgroundColor: '#E53935' }]}
+                onPress={() => setEditVisible(false)}
+              >
+                <Text style={styles.modalBtnText}>Batal</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -336,6 +532,52 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   bookBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    paddingVertical: 10,
+    marginBottom: 16,
+  },
+  deleteBtnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '90%',
+    borderRadius: 12,
+    padding: 16,
+  },
+  modalTitle: { fontSize: 17, fontWeight: '700', marginBottom: 10 },
+  input: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+    fontSize: 14,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  modalBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginHorizontal: 5,
+  },
+  modalBtnText: { color: '#fff', fontWeight: '600' },
 });
 
 export default TerapisDetailScreen;

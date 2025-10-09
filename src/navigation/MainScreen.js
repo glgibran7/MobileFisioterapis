@@ -1,16 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Dimensions, useColorScheme } from 'react-native';
+import {
+  Dimensions,
+  useColorScheme,
+  ActivityIndicator,
+  View,
+} from 'react-native';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // ✅ Tambahkan
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import HomeStack from './HomeStack';
+import TerapisHomeStack from './TerapisHomeStack';
+import AdminHomeStack from './AdminHomeStack';
 import BookStack from './BookStack';
 import ProfileStack from './ProfileStack';
 import TerapisStack from './TerapisStack';
-import HistoryScreen from '../screens/riwayat/HistoryScreen';
-import UsersScreen from '../screens/users/UsersScreen'; // ✅ Buat file ini nanti
+import UsersScreen from '../screens/users/UsersScreen';
 
 const Tab = createBottomTabNavigator();
 const { height, width } = Dimensions.get('window');
@@ -20,7 +26,8 @@ const MainScreen = () => {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
 
-  const [userRole, setUserRole] = useState(null); // ✅ simpan role
+  const [userRole, setUserRole] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const getUserRole = async () => {
@@ -28,14 +35,36 @@ const MainScreen = () => {
         const userData = await AsyncStorage.getItem('user');
         if (userData) {
           const parsed = JSON.parse(userData);
-          setUserRole(parsed.role); // pastikan field “role” ada di respons login
+          setUserRole(parsed.role);
         }
       } catch (err) {
         console.log('Error reading role:', err);
+      } finally {
+        setLoading(false);
       }
     };
     getUserRole();
   }, []);
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#007BFF" />
+      </View>
+    );
+  }
+
+  // 💡 Tentukan komponen Home berdasarkan role
+  const getHomeComponent = () => {
+    switch (userRole) {
+      case 'admin':
+        return AdminHomeStack;
+      case 'therapist':
+        return TerapisHomeStack;
+      default:
+        return HomeStack;
+    }
+  };
 
   return (
     <Tab.Navigator
@@ -53,11 +82,8 @@ const MainScreen = () => {
             case 'Book':
               iconName = 'calendar-outline';
               break;
-            case 'Riwayat':
-              iconName = 'time-outline';
-              break;
             case 'Pengguna':
-              iconName = 'people-outline'; // 👥 icon untuk tab baru
+              iconName = 'people-outline';
               break;
             case 'Profile':
               iconName = 'person-outline';
@@ -83,15 +109,15 @@ const MainScreen = () => {
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeStack} />
-      <Tab.Screen name="Terapis" component={TerapisStack} />
-      <Tab.Screen name="Book" component={BookStack} />
-      <Tab.Screen name="Riwayat" component={HistoryScreen} />
-
-      {/* ✅ Tambah tab Pengguna hanya untuk admin */}
+      {/* Home — tetap satu nama tab, tapi isi berbeda */}
+      <Tab.Screen name="Home" component={getHomeComponent()} />
+      {/* Hanya untuk admin */}
       {userRole === 'admin' && (
         <Tab.Screen name="Pengguna" component={UsersScreen} />
       )}
+      {/* Tab umum */}
+      <Tab.Screen name="Terapis" component={TerapisStack} />
+      <Tab.Screen name="Book" component={BookStack} />
 
       <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>

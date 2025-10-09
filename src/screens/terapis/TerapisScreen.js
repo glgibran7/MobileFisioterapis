@@ -11,15 +11,16 @@ import {
   TextInput,
   ScrollView,
   RefreshControl,
-  Platform,
   Modal,
   Pressable,
+  Alert,
 } from 'react-native';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import Header from '../../components/Header';
 import { useNavigation } from '@react-navigation/native';
 import Api from '../../utils/Api';
 import { useGlobal } from '../../context/GlobalContext';
+import { confirmAndDeleteTherapist } from './TherapistActions';
 
 const { width } = Dimensions.get('window');
 const FILTERS = ['All', 'Available', 'Busy'];
@@ -34,7 +35,7 @@ const sortOptions = [
 const TerapisScreen = () => {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
-  const { showToast, showLoading, hideLoading } = useGlobal();
+  const { showToast, showLoading, hideLoading, user } = useGlobal(); // ✅ ambil user dari GlobalContext
   const [search, setSearch] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('All');
   const [therapists, setTherapists] = useState([]);
@@ -43,21 +44,18 @@ const TerapisScreen = () => {
   const [sortBy, setSortBy] = useState('name');
   const navigation = useNavigation();
 
+  console.log('Current role:', user?.role); // ✅ debug aman
+
   const fetchTherapists = async () => {
     showLoading();
     try {
       const res = await Api.get('/therapists');
       if (res.data?.status === 'success') {
         setTherapists(res.data.data);
-        showToast('Data terapis berhasil diambil', '', 'success');
       }
     } catch (err) {
       console.error('Error fetching therapists:', err);
-      showToast(
-        'Gagal mengambil data',
-        'Terjadi kesalahan saat mengambil data terapis',
-        'error',
-      );
+      showToast('Gagal mengambil data', 'Terjadi kesalahan', 'error');
     } finally {
       hideLoading();
       setRefreshing(false);
@@ -73,7 +71,6 @@ const TerapisScreen = () => {
     fetchTherapists();
   };
 
-  // 🔍 Filter & Sort
   const filteredData = therapists
     .filter(item => {
       const matchSearch = item.name
@@ -200,13 +197,38 @@ const TerapisScreen = () => {
             </View>
           </View>
 
-          <TouchableOpacity style={styles.heartButton}>
-            <Ionicons
-              name="heart-outline"
-              size={20}
-              color={isDark ? '#888' : '#555'}
-            />
-          </TouchableOpacity>
+          {/* ❤️ dan 🗑️ tombol */}
+          <View style={styles.iconButtons}>
+            <TouchableOpacity style={styles.iconBtn}>
+              <Ionicons
+                name="heart-outline"
+                size={20}
+                color={isDark ? '#888' : '#555'}
+              />
+            </TouchableOpacity>
+
+            {/* ✅ hanya admin bisa hapus */}
+            {user?.role === 'admin' && (
+              <TouchableOpacity
+                style={styles.iconBtn}
+                onPress={() =>
+                  confirmAndDeleteTherapist({
+                    id: item.id_therapist,
+                    name: item.name,
+                    showLoading,
+                    hideLoading,
+                    showToast,
+                    onSuccess: () =>
+                      setTherapists(prev =>
+                        prev.filter(t => t.id_therapist !== item.id_therapist),
+                      ),
+                  })
+                }
+              >
+                <Ionicons name="trash-outline" size={20} color="#E53935" />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -223,7 +245,7 @@ const TerapisScreen = () => {
         showMessage={true}
       />
 
-      {/* 🔍 Search bar */}
+      {/* 🔍 Search */}
       <View
         style={[
           styles.searchContainer,
@@ -248,7 +270,7 @@ const TerapisScreen = () => {
         />
       </View>
 
-      {/* Filter Chips */}
+      {/* Filter */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -286,7 +308,7 @@ const TerapisScreen = () => {
         ))}
       </ScrollView>
 
-      {/* Header hasil + Sort */}
+      {/* Hasil */}
       <View style={styles.resultHeader}>
         <Text style={[styles.countText, { color: isDark ? '#fff' : '#000' }]}>
           {filteredData.length} ditemukan
@@ -297,7 +319,7 @@ const TerapisScreen = () => {
         >
           <Text style={{ color: isDark ? '#fff' : '#000', marginRight: 4 }}>
             {sortOptions.find(opt => opt.key === sortBy)?.label.split(' ')[0] ||
-              'Default'}{' '}
+              'Default'}
           </Text>
           <Ionicons
             name="swap-vertical-outline"
@@ -307,16 +329,13 @@ const TerapisScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Daftar Terapis */}
+      {/* List */}
       <FlatList
         style={{ flex: 1, marginTop: 4 }}
         data={filteredData}
         renderItem={renderItem}
         keyExtractor={item => item.id_therapist.toString()}
-        contentContainerStyle={{
-          paddingHorizontal: 16,
-          paddingBottom: 100,
-        }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -440,7 +459,17 @@ const styles = StyleSheet.create({
   rating: { fontSize: 14, fontWeight: '600', marginLeft: 4 },
   reviewCount: { fontSize: 13, marginLeft: 4 },
   row: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
-  heartButton: { position: 'absolute', top: 10, right: 10 },
+  iconButtons: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  iconBtn: {
+    padding: 4,
+  },
   filterScrollView: { flexGrow: 0, maxHeight: 70, marginBottom: 8 },
   filterScrollContent: { paddingHorizontal: 16, alignItems: 'center' },
   modalOverlay: {

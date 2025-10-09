@@ -37,6 +37,12 @@ const BookScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState('desc');
 
+  // ⭐️ Review Modal
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
+
   useEffect(() => {
     const loadUser = async () => {
       const storedUser = await AsyncStorage.getItem('user');
@@ -154,6 +160,49 @@ const BookScreen = () => {
     ]);
   };
 
+  // ⭐️ Submit Review
+  const handleSubmitReview = () => {
+    if (!rating || !comment.trim()) {
+      showToast(
+        'Perhatian',
+        'Isi rating dan komentar terlebih dahulu',
+        'error',
+      );
+      return;
+    }
+
+    // Tutup modal terlebih dahulu
+    setShowReviewModal(false);
+
+    // Tunggu modal tertutup, baru jalankan logic async
+    setTimeout(async () => {
+      showLoading(); // Tampilkan loading
+
+      try {
+        const res = await Api.post('/reviews', {
+          booking_id: selectedBooking?.id_booking,
+          rating,
+          comment,
+        });
+
+        // Reset input
+        setRating(0);
+        setComment('');
+
+        if (res?.data?.status === 'success') {
+          showToast('Terima kasih', 'Ulasan berhasil dikirim', 'success');
+          fetchBookings(false);
+        } else {
+          showToast('Gagal', 'Tidak dapat mengirim ulasan', 'error');
+        }
+      } catch (err) {
+        showToast('Error', 'Terjadi kesalahan saat mengirim ulasan', 'error');
+      } finally {
+        hideLoading(); // PASTIKAN loading disembunyikan dalam finally
+      }
+    }, 300); // delay sesuai animasi modal
+  };
+
   // Filter, Search, Sort
   const filteredBookings = bookings
     .filter(b => {
@@ -210,11 +259,9 @@ const BookScreen = () => {
             />
           </TouchableOpacity>
         )}
-
         <Text style={[styles.dateText, { color: '#0A84FF' }]}>
           {formattedDate} - {formattedTime} WITA
         </Text>
-
         <View style={styles.row}>
           <Image
             source={{
@@ -253,7 +300,6 @@ const BookScreen = () => {
             </View>
           </View>
         </View>
-
         {item.notes ? (
           <Text
             style={[styles.notes, { color: isDark ? '#aaa' : '#555' }]}
@@ -262,7 +308,6 @@ const BookScreen = () => {
             Note: “{item.notes}”
           </Text>
         ) : null}
-
         {/* 🔹 Tombol aksi */}
         {activeTab === 'Upcoming' && user?.role !== 'user' && (
           <View style={styles.buttonRow}>
@@ -301,7 +346,6 @@ const BookScreen = () => {
             </TouchableOpacity>
           </View>
         )}
-
         {/* 🟢 Tab Accepted */}
         {activeTab === 'Accepted' && (
           <View style={styles.buttonRow}>
@@ -344,6 +388,25 @@ const BookScreen = () => {
             </TouchableOpacity>
           </View>
         )}
+        {/* ⭐️ Completed Tab: tombol beri ulasan */}
+        {activeTab === 'Completed' &&
+          user?.role === 'user' &&
+          !item.has_review && (
+            <TouchableOpacity
+              style={[
+                styles.actionBtn,
+                { backgroundColor: '#0A84FF', marginTop: 10 },
+              ]}
+              onPress={() => {
+                setSelectedBooking(item);
+                setShowReviewModal(true);
+              }}
+            >
+              <Text style={[styles.btnText, { color: '#fff' }]}>
+                Beri Ulasan
+              </Text>
+            </TouchableOpacity>
+          )}
       </View>
     );
   };
@@ -352,7 +415,7 @@ const BookScreen = () => {
     <View
       style={[styles.container, { backgroundColor: isDark ? '#000' : '#fff' }]}
     >
-      <Header title="My Bookings" showBack={false} />
+      <Header title="My Bookings" showLocation={false} showBack={false} />
 
       {/* 🔍 Search bar + Sort icon */}
       <View
@@ -448,6 +511,76 @@ const BookScreen = () => {
             ))}
           </View>
         </Pressable>
+      </Modal>
+      {/* ⭐️ Modal Beri Ulasan */}
+      <Modal visible={showReviewModal} transparent animationType="fade">
+        <View style={styles.reviewModalOverlay}>
+          <View
+            style={[
+              styles.reviewModalContent,
+              { backgroundColor: isDark ? '#1a1a1a' : '#fff' },
+            ]}
+          >
+            <Text
+              style={[
+                styles.reviewModalTitle,
+                { color: isDark ? '#fff' : '#000' },
+              ]}
+            >
+              Beri Ulasan
+            </Text>
+
+            {/* Rating bintang */}
+            <View style={styles.reviewStarsRow}>
+              {[1, 2, 3, 4, 5].map(i => (
+                <TouchableOpacity key={i} onPress={() => setRating(i)}>
+                  <Ionicons
+                    name={i <= rating ? 'star' : 'star-outline'}
+                    size={32}
+                    color="#FFD700"
+                    style={{ marginHorizontal: 6 }}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TextInput
+              placeholder="Tulis komentar..."
+              placeholderTextColor={isDark ? '#777' : '#aaa'}
+              value={comment}
+              onChangeText={setComment}
+              multiline
+              style={[
+                styles.reviewInput,
+                {
+                  color: isDark ? '#fff' : '#000',
+                  backgroundColor: isDark ? '#232323' : '#F2F2F7',
+                },
+              ]}
+            />
+
+            <View style={styles.reviewButtonRow}>
+              <Pressable
+                style={[
+                  styles.reviewActionBtn,
+                  { backgroundColor: '#ccc', marginRight: 8 },
+                ]}
+                onPress={() => setShowReviewModal(false)}
+              >
+                <Text style={{ color: '#000', fontWeight: '600' }}>Batal</Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.reviewActionBtn,
+                  { backgroundColor: '#0A84FF', marginLeft: 8 },
+                ]}
+                onPress={handleSubmitReview}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600' }}>Kirim</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       {/* Tabs */}
@@ -604,6 +737,56 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: 'rgba(255,0,0,0.1)',
     zIndex: 5,
+  },
+  reviewModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  reviewModalContent: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: 16,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    elevation: 10,
+    alignItems: 'center',
+  },
+  reviewModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 18,
+  },
+  reviewStarsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 18,
+  },
+  reviewInput: {
+    width: '100%',
+    minHeight: 70,
+    borderRadius: 10,
+    fontSize: 15,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 18,
+    textAlignVertical: 'top',
+  },
+  reviewButtonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 4,
+  },
+  reviewActionBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

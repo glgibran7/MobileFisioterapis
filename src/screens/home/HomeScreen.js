@@ -162,17 +162,17 @@ export default function HomeScreen({ navigation }) {
             <TouchableOpacity
               key={cat.id}
               style={styles.categoryWrapper}
-              onPress={() => console.log(`Klik kategori ${cat.name}`)}
+              onPress={() => navigation.navigate('Terapis')}
             >
               <ImageBackground
-                source={require('../../img/transparant.png')} // ganti dengan bg image kamu
+                source={require('../../img/transparant.png')}
                 imageStyle={{
                   width: '70%',
                   height: '70%',
                   borderRadius: 10,
                   opacity: 0.5,
                   resizeMode: 'cover',
-                }} // opacity biar warna dasar tetap kelihatan
+                }}
                 style={[styles.categoryBox, { backgroundColor: cat.color }]}
               >
                 <Ionicons name={cat.icon} size={28} color="#fff" />
@@ -188,6 +188,7 @@ export default function HomeScreen({ navigation }) {
             </TouchableOpacity>
           ))}
         </View>
+
         {/* 🔹 Informasi Kesehatan */}
         <View style={styles.sectionHeader}>
           <Text

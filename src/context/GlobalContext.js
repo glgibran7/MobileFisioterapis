@@ -1,12 +1,37 @@
-import React, { createContext, useContext, useState } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { View, StyleSheet } from 'react-native';
 import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
 import CustomSpinner from '../components/CustomSpinner';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const GlobalContext = createContext();
 
 export const GlobalProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState(null);
+
+  // 🔹 Load user dari AsyncStorage (saat pertama kali app dijalankan)
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const savedUser = await AsyncStorage.getItem('user');
+        if (savedUser) setUser(JSON.parse(savedUser));
+      } catch (e) {
+        console.log('Gagal memuat user:', e);
+      }
+    };
+    loadUser();
+  }, []);
+
+  // 🔹 Simpan user ke AsyncStorage setiap kali berubah
+  useEffect(() => {
+    const saveUser = async () => {
+      if (user) {
+        await AsyncStorage.setItem('user', JSON.stringify(user));
+      }
+    };
+    saveUser();
+  }, [user]);
 
   const showLoading = () => setLoading(true);
   const hideLoading = () => setLoading(false);
@@ -22,7 +47,15 @@ export const GlobalProvider = ({ children }) => {
   };
 
   return (
-    <GlobalContext.Provider value={{ showLoading, hideLoading, showToast }}>
+    <GlobalContext.Provider
+      value={{
+        showLoading,
+        hideLoading,
+        showToast,
+        user,
+        setUser, // ⬅️ tambahkan ini supaya screen lain bisa mengupdate user
+      }}
+    >
       {children}
 
       {loading && (
@@ -31,7 +64,6 @@ export const GlobalProvider = ({ children }) => {
         </View>
       )}
 
-      {/* ✅ Config toast type */}
       <Toast
         config={{
           success: props => (

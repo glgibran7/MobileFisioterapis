@@ -29,7 +29,7 @@ const LoginScreen = () => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
-  const { showToast, showLoading, hideLoading } = useGlobal();
+  const { showToast, showLoading, hideLoading, setUser } = useGlobal();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -93,6 +93,7 @@ const LoginScreen = () => {
         // 🔹 Simpan token & user info
         await AsyncStorage.setItem('token', data.access_token);
         await AsyncStorage.setItem('user', JSON.stringify(data));
+        setUser(data); // update context user
 
         // 🔹 Simpan / hapus data remember
         if (rememberMe) {
