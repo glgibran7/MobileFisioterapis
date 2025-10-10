@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import Header from '../../components/Header';
 import { useGlobal } from '../../context/GlobalContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Api from '../../utils/Api';
 
 const { width } = Dimensions.get('window');
 
@@ -20,23 +22,71 @@ const EditProfileScreen = ({ navigation }) => {
 
   const { showToast, showLoading, hideLoading } = useGlobal();
 
-  const [name, setName] = useState('Ricardo Kaka');
-  const [email, setEmail] = useState('ricardokaka@gmail.com');
-  const [phone, setPhone] = useState('081234567890');
+  const [idUser, setIdUser] = useState(null);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
 
   const themeStyles = isDark ? darkStyles : lightStyles;
 
-  const handleSave = () => {
-    showLoading(); // tampilkan spinner
-    setTimeout(() => {
-      hideLoading(); // sembunyikan spinner
-      showToast(
-        'Profil berhasil diperbarui',
-        'success',
-        'Data sudah disimpan 👍',
-      );
-      navigation.goBack();
-    }, 2000); // simulasi delay simpan data
+  // 🔹 Ambil data user dari API /auth/profile
+  useEffect(() => {
+    const fetchProfile = async () => {
+      showLoading();
+      try {
+        const response = await Api.get('/auth/profile');
+        if (response.data?.status === 'success') {
+          const data = response.data.data;
+          setIdUser(data.id_user);
+          setName(data.name);
+          setEmail(data.email);
+          setPhone(data.phone || '');
+        } else {
+          showToast('Gagal', 'Tidak dapat memuat profil', 'error');
+        }
+      } catch (error) {
+        console.log('Profile error:', error.response?.data || error.message);
+        showToast('Gagal', 'Terjadi kesalahan saat memuat profil', 'error');
+      } finally {
+        hideLoading();
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  // 🔹 Simpan perubahan ke /users/{id_user}
+  const handleSave = async () => {
+    if (!name.trim() || !phone.trim()) {
+      showToast('Gagal', 'Nama dan No HP wajib diisi', 'error');
+      return;
+    }
+
+    showLoading();
+    try {
+      const payload = { name, phone };
+      const response = await Api.put(`/users/${idUser}`, payload);
+
+      if (response.data?.status === 'success') {
+        showToast('Berhasil', 'Profil berhasil diperbarui', 'success');
+
+        // Simpan ke AsyncStorage agar sinkron
+        const updatedUser = { id_user: idUser, name, email, phone };
+        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+
+        navigation.goBack();
+      } else {
+        showToast('Gagal', 'Tidak dapat memperbarui profil', 'error');
+      }
+    } catch (error) {
+      console.log('Edit profile error:', error.response?.data || error.message);
+      const msg =
+        error.response?.data?.message ||
+        'Terjadi kesalahan saat menyimpan data';
+      showToast('Gagal', msg, 'error');
+    } finally {
+      hideLoading();
+    }
   };
 
   return (
@@ -56,14 +106,12 @@ const EditProfileScreen = ({ navigation }) => {
           onChangeText={setName}
         />
 
-        {/* Email */}
+        {/* Email (tidak bisa diubah) */}
         <Text style={[styles.label, themeStyles.text]}>Email</Text>
         <TextInput
-          style={[styles.input, themeStyles.input]}
+          style={[styles.input, themeStyles.input, { opacity: 0.6 }]}
           value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
+          editable={false}
         />
 
         {/* No HP */}
@@ -110,14 +158,12 @@ const styles = StyleSheet.create({
   },
 });
 
-/* Tema Terang */
 const lightStyles = StyleSheet.create({
   container: { backgroundColor: '#fff' },
   input: { borderColor: '#ddd', backgroundColor: '#f9f9f9', color: '#000' },
   text: { color: '#000' },
 });
 
-/* Tema Gelap */
 const darkStyles = StyleSheet.create({
   container: { backgroundColor: '#000' },
   input: { borderColor: '#444', backgroundColor: '#1e1e1e', color: '#fff' },

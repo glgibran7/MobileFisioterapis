@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,44 +11,83 @@ import {
 import Ionicons from '@react-native-vector-icons/ionicons';
 import Header from '../../components/Header';
 import { useGlobal } from '../../context/GlobalContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Api from '../../utils/Api';
 
 const UbahPasswordScreen = ({ navigation }) => {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
   const { showToast, showLoading, hideLoading } = useGlobal();
 
-  const [oldPassword, setOldPassword] = useState('');
+  const [idUser, setIdUser] = useState(null);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // state untuk toggle mata
-  const [showOld, setShowOld] = useState(false);
+  // toggle mata password
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
   const themeStyles = isDark ? darkStyles : lightStyles;
 
-  const handleChangePassword = () => {
-    if (!oldPassword || !newPassword || !confirmPassword) {
-      showToast('Semua field wajib diisi', 'error');
+  // 🔹 Ambil id_user dari AsyncStorage
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const data = await AsyncStorage.getItem('user');
+        if (data) {
+          const user = JSON.parse(data);
+          setIdUser(user.id_user);
+        }
+      } catch (error) {
+        console.log('Gagal ambil user id:', error);
+      }
+    };
+    loadUser();
+  }, []);
+
+  // 🔹 Fungsi ubah password pakai API
+  const handleChangePassword = async () => {
+    if (!newPassword || !confirmPassword) {
+      showToast('Gagal', 'Semua field wajib diisi', 'error');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      showToast('Password tidak cocok', 'error');
+      showToast('Gagal', 'Password baru tidak cocok', 'error');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      showToast('Gagal', 'Password minimal 6 karakter', 'error');
       return;
     }
 
     showLoading();
-    setTimeout(() => {
-      hideLoading();
-      showToast(
-        'Password berhasil diubah',
-        'success',
-        'Silakan login ulang jika diminta 🔑',
+    try {
+      const payload = { password: newPassword };
+      const response = await Api.put(`/users/${idUser}`, payload);
+
+      if (response.data?.status === 'success') {
+        showToast('Berhasil', 'Password berhasil diubah', 'success');
+        navigation.goBack();
+      } else {
+        showToast(
+          'Gagal',
+          response.data?.message || 'Gagal mengubah password',
+          'error',
+        );
+      }
+    } catch (error) {
+      console.log(
+        'Change password error:',
+        error.response?.data || error.message,
       );
-      navigation.goBack();
-    }, 2000);
+      const msg =
+        error.response?.data?.message || 'Terjadi kesalahan saat ubah password';
+      showToast('Gagal', msg, 'error');
+    } finally {
+      hideLoading();
+    }
   };
 
   const renderInput = (label, value, setValue, show, setShow, placeholder) => (
@@ -79,14 +118,6 @@ const UbahPasswordScreen = ({ navigation }) => {
       <Header title="Ubah Password" onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerStyle={styles.form}>
-        {renderInput(
-          'Password Lama',
-          oldPassword,
-          setOldPassword,
-          showOld,
-          setShowOld,
-          'Masukkan password lama',
-        )}
         {renderInput(
           'Password Baru',
           newPassword,
@@ -152,7 +183,6 @@ const styles = StyleSheet.create({
   },
 });
 
-/* Tema Terang */
 const lightStyles = StyleSheet.create({
   container: { backgroundColor: '#fff' },
   inputWrapper: { borderColor: '#ddd', backgroundColor: '#f9f9f9' },
@@ -160,7 +190,6 @@ const lightStyles = StyleSheet.create({
   text: { color: '#000' },
 });
 
-/* Tema Gelap */
 const darkStyles = StyleSheet.create({
   container: { backgroundColor: '#000' },
   inputWrapper: { borderColor: '#444', backgroundColor: '#1e1e1e' },

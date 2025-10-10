@@ -9,11 +9,12 @@ import {
   ScrollView,
   useColorScheme,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import Api from '../../utils/Api';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import Header from '../../components/Header';
+import Api from '../../utils/Api';
 
 const TerapisHomeScreen = () => {
   const navigation = useNavigation();
@@ -22,6 +23,8 @@ const TerapisHomeScreen = () => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [therapist, setTherapist] = useState(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
@@ -34,7 +37,6 @@ const TerapisHomeScreen = () => {
     subText: isDark ? '#AAA' : '#555',
     border: isDark ? '#222' : '#E0E0E0',
     shadow: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.1)',
-    accent: isDark ? '#0A84FF' : '#007AFF',
   };
 
   useEffect(() => {
@@ -101,6 +103,31 @@ const TerapisHomeScreen = () => {
     }
   };
 
+  /** 🔹 Ubah status dari dropdown */
+  const toggleStatusDropdown = async newStatus => {
+    if (!therapist) return;
+    setUpdatingStatus(true);
+    try {
+      const res = await Api.patch(
+        `/therapists/${therapist.id_therapist}/status`,
+        { status_therapist: newStatus },
+      );
+      if (res.data?.status === 'success') {
+        setTherapist(prev => ({
+          ...prev,
+          status_therapist: newStatus,
+        }));
+      } else {
+        Alert.alert('Gagal', 'Tidak dapat mengubah status.');
+      }
+    } catch (error) {
+      console.log('Error ubah status:', error);
+      Alert.alert('Error', 'Terjadi kesalahan saat mengubah status.');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
   return (
     <>
       <Header
@@ -148,7 +175,9 @@ const TerapisHomeScreen = () => {
               {therapist?.name || 'Nama Terapis'}
             </Text>
 
-            <View
+            {/* 🔹 Status Aktif (Dropdown) */}
+            <TouchableOpacity
+              onPress={() => setShowStatusDropdown(prev => !prev)}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -177,20 +206,76 @@ const TerapisHomeScreen = () => {
               >
                 {therapist?.status_therapist === 'available'
                   ? 'Available'
-                  : 'Tidak Tersedia'}
+                  : 'Busy'}
               </Text>
-            </View>
+              <Ionicons
+                name={showStatusDropdown ? 'chevron-up' : 'chevron-down'}
+                size={14}
+                color={
+                  therapist?.status_therapist === 'available'
+                    ? '#4CAF50'
+                    : '#F44336'
+                }
+                style={{ marginLeft: 4 }}
+              />
+            </TouchableOpacity>
+
+            {/* 🔽 Dropdown pilihan status */}
+            {showStatusDropdown && (
+              <View
+                style={{
+                  backgroundColor: colors.card,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  marginTop: 6,
+                  overflow: 'hidden',
+                  alignSelf: 'flex-start',
+                }}
+              >
+                {['available', 'busy'].map(status => (
+                  <TouchableOpacity
+                    key={status}
+                    onPress={async () => {
+                      setShowStatusDropdown(false);
+                      if (therapist?.status_therapist !== status) {
+                        await toggleStatusDropdown(status);
+                      }
+                    }}
+                    style={{
+                      paddingVertical: 6,
+                      paddingHorizontal: 12,
+                      backgroundColor:
+                        therapist?.status_therapist === status
+                          ? colors.border
+                          : 'transparent',
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: colors.text,
+                        fontSize: 13,
+                        textTransform: 'capitalize',
+                      }}
+                    >
+                      {status}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {updatingStatus && (
+              <ActivityIndicator
+                color={colors.text}
+                size="small"
+                style={{ marginTop: 4 }}
+              />
+            )}
 
             <Text style={[styles.specialty, { color: colors.subText }]}>
               {therapist?.specialization || 'Spesialisasi tidak tersedia'}
             </Text>
-            {/* 
-            <Text style={[styles.contact, { color: colors.subText }]}>
-              📞 {therapist?.phone || '-'}
-            </Text>
-            <Text style={[styles.contact, { color: colors.subText }]}>
-              ✉️ {therapist?.email || '-'}
-            </Text> */}
           </View>
         </View>
 
@@ -212,7 +297,7 @@ const TerapisHomeScreen = () => {
               color={colors.primary}
             />
             <Text style={[styles.statValue, { color: colors.text }]}>
-              {therapist?.experience_years || 0}+
+              {therapist?.experience_years || 'N/A'}
             </Text>
             <Text style={[styles.statLabel, { color: colors.subText }]}>
               Experience
@@ -234,7 +319,7 @@ const TerapisHomeScreen = () => {
               color={colors.primary}
             />
             <Text style={[styles.statValue, { color: colors.text }]}>
-              {therapist?.total_reviews || 0}
+              {therapist?.total_reviews || 'N/A'}
             </Text>
             <Text style={[styles.statLabel, { color: colors.subText }]}>
               Reviews
@@ -306,45 +391,30 @@ const TerapisHomeScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20, paddingTop: 10 },
-
-  // 👨‍⚕️ Profil Card
   profileCard: {
     flexDirection: 'row',
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 15,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
   },
   avatar: { width: 64, height: 64, borderRadius: 32, marginRight: 12 },
   name: { fontSize: 16, fontWeight: '700', textTransform: 'capitalize' },
-  specialty: { fontSize: 13, marginTop: 2 },
-  locationRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-  locationText: { marginLeft: 4, fontSize: 12 },
-
-  // 📋 Detail Profil
-  detailCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 20,
-  },
-  sectionTitle: { fontSize: 15, fontWeight: '700', marginBottom: 8 },
-  detailItem: { fontSize: 13, marginBottom: 4 },
-  label: { fontWeight: '600' },
-
-  // 📈 Statistik
+  specialty: { fontSize: 13, marginTop: 6 },
+  statusText: { fontSize: 12, marginLeft: 4 },
+  statValue: { fontSize: 16, fontWeight: '700', marginTop: 4 },
+  statLabel: { fontSize: 12 },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 25,
+    marginVertical: 20,
   },
   statItem: { alignItems: 'center', flex: 1 },
-  statValue: { fontSize: 18, fontWeight: '700', marginTop: 6 },
-  statLabel: { fontSize: 13 },
-
-  // 📅 Booking Hari Ini
+  infoSection: { marginTop: 10, marginBottom: 20 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', marginBottom: 6 },
+  sectionText: { fontSize: 13, lineHeight: 20 },
   card: {
     borderRadius: 16,
     padding: 20,
@@ -353,16 +423,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
   },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  cardCount: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
+  cardTitle: { fontSize: 16, fontWeight: '600', marginBottom: 8 },
+  cardCount: { fontSize: 36, fontWeight: 'bold', marginBottom: 8 },
   cardBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -373,57 +435,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   cardBtnText: { fontWeight: '600', marginLeft: 8 },
-  statusText: {
-    fontSize: 12,
-    marginLeft: 4,
-  },
-  contact: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-
-  infoSection: {
-    marginTop: 10,
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  sectionText: {
-    fontSize: 13,
-    lineHeight: 20,
-  },
-
-  // Override untuk profil agar lebih mirip seperti di SS
-  profileCard: {
-    flexDirection: 'row',
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    marginBottom: 15,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-  },
-
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: 20,
-  },
-  statItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginTop: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-  },
 });
 
 export default TerapisHomeScreen;

@@ -50,8 +50,12 @@ const ProfileScreen = () => {
       }
     };
 
-    fetchProfile();
-  }, []);
+    // 🔹 Jalankan setiap kali halaman di-focus kembali
+    const unsubscribe = navigation.addListener('focus', fetchProfile);
+
+    // 🔹 Hapus listener saat unmount
+    return unsubscribe;
+  }, [navigation]);
 
   const handleLogout = async () => {
     showLoading();

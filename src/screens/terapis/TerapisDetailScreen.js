@@ -34,22 +34,17 @@ const TerapisDetailScreen = ({ route, navigation }) => {
   const [editVisible, setEditVisible] = useState(false);
   const [editData, setEditData] = useState({
     bio: therapist.bio || '',
-    experience_years: therapist.experience_years || '',
+    experience_years: parseInt(therapist.experience_years) || '',
     specialization: therapist.specialization || '',
     status_therapist: therapist.status_therapist || 'available',
-    working_hours: therapist.working_hours || '',
+    working_hours: therapist.working_hours || { start: '', end: '' },
   });
+  console.log(therapist);
 
   const handleEdit = async () => {
     try {
       showLoading();
-      await Api.put(`/therapists/${therapist.id_therapist}`, {
-        bio: editData.bio,
-        experience_years: parseInt(editData.experience_years) || 0,
-        specialization: editData.specialization,
-        status_therapist: editData.status_therapist,
-        working_hours: editData.working_hours,
-      });
+      await Api.put(`/therapists/${therapist.id_therapist}`, editData);
       hideLoading();
       showToast('Berhasil', 'Data terapis berhasil diperbarui', 'success');
       setEditVisible(false);
@@ -243,7 +238,7 @@ const TerapisDetailScreen = ({ route, navigation }) => {
             {
               icon: 'chatbubbles-outline',
               label: 'Reviews',
-              value: therapist.total_reviews || reviews.length,
+              value: therapist.total_reviews || 'N/A',
             },
           ].map((item, i) => (
             <View key={i} style={styles.statBox}>
@@ -280,7 +275,9 @@ const TerapisDetailScreen = ({ route, navigation }) => {
             Jam Kerja
           </Text>
           <Text style={[styles.sectionText, { color: colors.textSecondary }]}>
-            {therapist.working_hours || 'Belum ada informasi jam kerja.'}
+            {therapist.working_hours
+              ? `${therapist.working_hours.start} - ${therapist.working_hours.end}`
+              : 'Belum ada informasi jam kerja.'}
           </Text>
         </View>
 
@@ -439,18 +436,50 @@ const TerapisDetailScreen = ({ route, navigation }) => {
               </Picker>
             </View>
 
-            <TextInput
-              style={[
-                styles.input,
-                { color: colors.textPrimary, borderColor: colors.border },
-              ]}
-              placeholder="Jam Kerja"
-              placeholderTextColor={colors.textMuted}
-              value={editData.working_hours}
-              onChangeText={text =>
-                setEditData({ ...editData, working_hours: text })
-              }
-            />
+            <View
+              style={{ flexDirection: 'row', justifyContent: 'space-between' }}
+            >
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    flex: 1,
+                    color: colors.textPrimary,
+                    borderColor: colors.border,
+                    marginRight: 5,
+                  },
+                ]}
+                placeholder="Mulai (09:00)"
+                placeholderTextColor={colors.textMuted}
+                value={editData.working_hours.start}
+                onChangeText={text =>
+                  setEditData({
+                    ...editData,
+                    working_hours: { ...editData.working_hours, start: text },
+                  })
+                }
+              />
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    flex: 1,
+                    color: colors.textPrimary,
+                    borderColor: colors.border,
+                    marginLeft: 5,
+                  },
+                ]}
+                placeholder="Selesai (21:00)"
+                placeholderTextColor={colors.textMuted}
+                value={editData.working_hours.end}
+                onChangeText={text =>
+                  setEditData({
+                    ...editData,
+                    working_hours: { ...editData.working_hours, end: text },
+                  })
+                }
+              />
+            </View>
 
             <View style={styles.modalActions}>
               <Pressable
