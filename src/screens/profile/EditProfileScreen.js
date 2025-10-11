@@ -93,6 +93,8 @@ const EditProfileScreen = ({ navigation }) => {
     <View style={[styles.container, themeStyles.container]}>
       <Header
         showLocation={false}
+        showNotification={false}
+        showMessage={false}
         title="Edit Profile"
         onBack={() => navigation.goBack()}
       />

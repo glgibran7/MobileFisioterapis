@@ -108,10 +108,9 @@ const TerapisHomeScreen = () => {
     if (!therapist) return;
     setUpdatingStatus(true);
     try {
-      const res = await Api.patch(
-        `/therapists/${therapist.id_therapist}/status`,
-        { status_therapist: newStatus },
-      );
+      const res = await Api.put(`/therapists/${therapist.id_user}/status`, {
+        status_therapist: newStatus,
+      });
       if (res.data?.status === 'success') {
         setTherapist(prev => ({
           ...prev,

@@ -146,17 +146,20 @@ export default function HomeScreen({ navigation }) {
             />
           ))}
         </View>
-        {/* 🔹 Kategori */}
+        {/* Kategori */}
         <View style={styles.sectionHeader}>
           <Text
             style={[styles.sectionTitle, { color: isDark ? '#fff' : '#000' }]}
           >
             Kategori
           </Text>
-          <TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('AllCategoryScreen')}
+          >
             <Text style={{ color: '#00BFFF' }}>Lihat Semua</Text>
           </TouchableOpacity>
         </View>
+
         <View style={styles.categoryContainer}>
           {categories.map(cat => (
             <TouchableOpacity
@@ -196,13 +199,22 @@ export default function HomeScreen({ navigation }) {
           >
             Informasi Kesehatan
           </Text>
-          <TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('AllHealthInfoScreen')}
+          >
             <Text style={{ color: '#00BFFF' }}>Lihat Semua</Text>
           </TouchableOpacity>
         </View>
+
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {services.map(service => (
-            <View key={service.id} style={styles.serviceCard}>
+            <TouchableOpacity
+              key={service.id}
+              style={styles.serviceCard}
+              onPress={() =>
+                navigation.navigate('DetailInformasiScreen', { id: service.id })
+              }
+            >
               <Image source={service.image} style={styles.serviceImage} />
               <Text
                 style={[
@@ -212,7 +224,7 @@ export default function HomeScreen({ navigation }) {
               >
                 {service.title}
               </Text>
-            </View>
+            </TouchableOpacity>
           ))}
         </ScrollView>
       </ScrollView>

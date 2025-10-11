@@ -91,6 +91,21 @@ const TerapisDetailScreen = ({ route, navigation }) => {
     fetchReviews();
   }, []);
 
+  // Fungsi untuk menangani booking
+  const handleBookAppointment = () => {
+    if (therapist.status_therapist === 'busy') {
+      // Tampilkan toast peringatan jika terapis sedang sibuk
+      showToast(
+        'Terapis Sibuk',
+        'Terapis saat ini sedang sibuk. Silakan coba lagi nanti.',
+        'error',
+      );
+    } else {
+      // Arahkan ke halaman booking appointment jika terapis tersedia
+      navigation.navigate('BookAppointmentScreen', { therapist });
+    }
+  };
+
   // 🔹 Hapus terapis (khusus admin)
   const handleDelete = () => {
     Alert.alert(
@@ -356,17 +371,16 @@ const TerapisDetailScreen = ({ route, navigation }) => {
         </View>
       </ScrollView>
 
-      {/* Tombol Booking - disembunyikan jika admin */}
+      {/* Tombol Booking tetap muncul, namun akan memberi toast jika status terapis "busy" */}
       {user?.role !== 'admin' && (
         <TouchableOpacity
           style={[styles.bookBtn, { backgroundColor: colors.accent }]}
-          onPress={() =>
-            navigation.navigate('BookAppointmentScreen', { therapist })
-          }
+          onPress={handleBookAppointment} // Fungsi sudah ada pengecekan status di dalamnya
         >
           <Text style={styles.bookBtnText}>Book Appointment</Text>
         </TouchableOpacity>
       )}
+
       {/* Modal Edit Terapis */}
       <Modal visible={editVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>

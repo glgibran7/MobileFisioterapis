@@ -11,14 +11,15 @@ import {
   RefreshControl,
   Alert,
   TextInput,
-  Modal,
-  Pressable,
 } from 'react-native';
 import Header from '../../components/Header';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import Api from '../../utils/Api';
 import { useGlobal } from '../../context/GlobalContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import ReviewModal from './modals/ReviewModal';
+import SortModal from './modals/SortModal';
+import ReviewDetailModal from './modals/ReviewDetailModal';
 
 const { width } = Dimensions.get('window');
 
@@ -26,22 +27,22 @@ const BookScreen = () => {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
   const { showToast, showLoading, hideLoading } = useGlobal();
-
   const [activeTab, setActiveTab] = useState('Upcoming');
   const [bookings, setBookings] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState(null);
   const [showSortModal, setShowSortModal] = useState(false);
-
   // Search & Sort
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState('desc');
-
   // ⭐️ Review Modal
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
+  const [reviews, setReviews] = useState({});
+  const [showReviewDetailModal, setShowReviewDetailModal] = useState(false);
+  const [selectedReview, setSelectedReview] = useState(null);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -56,6 +57,16 @@ const BookScreen = () => {
     try {
       if (showLoader) showLoading();
       const res = await Api.get('/bookings');
+      if (isMounted && res?.data?.status === 'success') {
+        const bookingsData = res.data.data;
+        setBookings(bookingsData);
+
+        // 🔹 Ambil semua review berdasarkan id_review yang ada
+        bookingsData.forEach(b => {
+          if (b.id_review) fetchReviewDetail(b.id_review, b.id_booking);
+        });
+      }
+
       if (isMounted && res?.data?.status === 'success') {
         setBookings(res.data.data);
       }
@@ -80,6 +91,13 @@ const BookScreen = () => {
   useEffect(() => {
     fetchBookings();
   }, [fetchBookings]);
+
+  const countByStatus = {
+    Upcoming: bookings.filter(b => b.status_booking === 'pending').length,
+    Accepted: bookings.filter(b => b.status_booking === 'accepted').length,
+    Completed: bookings.filter(b => b.status_booking === 'completed').length,
+    Rejected: bookings.filter(b => b.status_booking === 'rejected').length,
+  };
 
   const handleDeleteBooking = async id_booking => {
     Alert.alert(
@@ -160,7 +178,7 @@ const BookScreen = () => {
     ]);
   };
 
-  // ⭐️ Submit Review
+  //  Submit Review
   const handleSubmitReview = () => {
     if (!rating || !comment.trim()) {
       showToast(
@@ -171,13 +189,10 @@ const BookScreen = () => {
       return;
     }
 
-    // Tutup modal terlebih dahulu
     setShowReviewModal(false);
 
-    // Tunggu modal tertutup, baru jalankan logic async
     setTimeout(async () => {
-      showLoading(); // Tampilkan loading
-
+      showLoading();
       try {
         const res = await Api.post('/reviews', {
           booking_id: selectedBooking?.id_booking,
@@ -185,22 +200,52 @@ const BookScreen = () => {
           comment,
         });
 
-        // Reset input
         setRating(0);
         setComment('');
 
         if (res?.data?.status === 'success') {
+          const newReview = res.data.data; // berisi id_review, rating, comment, dll
+
+          // Simpan ke state `reviews` agar bisa langsung tampil
+          setReviews(prev => ({
+            ...prev,
+            [selectedBooking.id_booking]: newReview,
+          }));
+
+          // Update juga list booking agar tanda has_review = true
+          setBookings(prev =>
+            prev.map(b =>
+              b.id_booking === selectedBooking.id_booking
+                ? { ...b, has_review: true, id_review: newReview.id_review }
+                : b,
+            ),
+          );
+
           showToast('Terima kasih', 'Ulasan berhasil dikirim', 'success');
-          fetchBookings(false);
         } else {
           showToast('Gagal', 'Tidak dapat mengirim ulasan', 'error');
         }
       } catch (err) {
+        console.log(err);
         showToast('Error', 'Terjadi kesalahan saat mengirim ulasan', 'error');
       } finally {
-        hideLoading(); // PASTIKAN loading disembunyikan dalam finally
+        hideLoading();
       }
-    }, 300); // delay sesuai animasi modal
+    }, 300);
+  };
+
+  const fetchReviewDetail = async (id_review, bookingId) => {
+    try {
+      const res = await Api.get(`/reviews/${id_review}`);
+      if (res?.data?.status === 'success') {
+        setReviews(prev => ({
+          ...prev,
+          [bookingId]: res.data.data,
+        }));
+      }
+    } catch (err) {
+      console.log('Gagal ambil detail review:', err);
+    }
   };
 
   // Filter, Search, Sort
@@ -246,7 +291,7 @@ const BookScreen = () => {
           },
         ]}
       >
-        {/* 🔹 Tombol hapus di pojok kanan atas (hanya di Upcoming) */}
+        {/*  Tombol hapus di pojok kanan atas (hanya di Upcoming) */}
         {activeTab === 'Upcoming' && (
           <TouchableOpacity
             style={styles.deleteIconBtn}
@@ -308,10 +353,10 @@ const BookScreen = () => {
             Note: “{item.notes}”
           </Text>
         ) : null}
-        {/* 🔹 Tombol aksi */}
+        {/*  Tombol aksi */}
         {activeTab === 'Upcoming' && user?.role !== 'user' && (
           <View style={styles.buttonRow}>
-            {/* 🔴 Reject */}
+            {/* Reject */}
             <TouchableOpacity
               style={[
                 styles.actionBtn,
@@ -328,7 +373,7 @@ const BookScreen = () => {
               <Text style={[styles.btnText, { color: '#b00000' }]}>Reject</Text>
             </TouchableOpacity>
 
-            {/* 🔵 Confirm */}
+            {/* Confirm */}
             <TouchableOpacity
               style={[
                 styles.actionBtn,
@@ -346,67 +391,168 @@ const BookScreen = () => {
             </TouchableOpacity>
           </View>
         )}
-        {/* 🟢 Tab Accepted */}
+        {/* Tab Accepted */}
         {activeTab === 'Accepted' && (
-          <View style={styles.buttonRow}>
-            {/* 🗑️ Cancel/Delete */}
-            <TouchableOpacity
-              style={[
-                styles.actionBtn,
-                { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' },
-              ]}
-              onPress={() => handleDeleteBooking(item.id_booking)}
-            >
-              <Ionicons
-                name="trash-outline"
-                size={18}
-                color={isDark ? '#fff' : '#000'}
-                style={{ marginRight: 6 }}
-              />
+          <>
+            {user?.role === 'user' ? (
               <Text
-                style={[styles.btnText, { color: isDark ? '#fff' : '#000' }]}
+                style={{
+                  marginTop: 12,
+                  fontStyle: 'italic',
+                  textAlign: 'center',
+                  fontWeight: 'bold',
+                  color: isDark ? 'green' : 'green',
+                }}
               >
-                Cancel
+                Booking telah diterima, terapis akan datang ke alamat Anda.
               </Text>
-            </TouchableOpacity>
+            ) : (
+              <View style={styles.buttonRow}>
+                {/* Cancel/Delete */}
+                <TouchableOpacity
+                  style={[
+                    styles.actionBtn,
+                    { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' },
+                  ]}
+                  onPress={() => handleDeleteBooking(item.id_booking)}
+                >
+                  <Ionicons
+                    name="trash-outline"
+                    size={18}
+                    color={isDark ? '#fff' : '#000'}
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text
+                    style={[
+                      styles.btnText,
+                      { color: isDark ? '#fff' : '#000' },
+                    ]}
+                  >
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
 
-            {/* ✅ Completed */}
-            <TouchableOpacity
-              style={[
-                styles.actionBtn,
-                { backgroundColor: '#28a745', flexDirection: 'row' },
-              ]}
-              onPress={() => handleUpdateStatus(item.id_booking, 'completed')}
-            >
-              <Ionicons
-                name="checkmark-done-outline"
-                size={18}
-                color="#fff"
-                style={{ marginRight: 6 }}
-              />
-              <Text style={[styles.btnText, { color: '#fff' }]}>Completed</Text>
-            </TouchableOpacity>
-          </View>
+                {/* Completed */}
+                <TouchableOpacity
+                  style={[
+                    styles.actionBtn,
+                    { backgroundColor: '#28a745', flexDirection: 'row' },
+                  ]}
+                  onPress={() =>
+                    handleUpdateStatus(item.id_booking, 'completed')
+                  }
+                >
+                  <Ionicons
+                    name="checkmark-done-outline"
+                    size={18}
+                    color="#fff"
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={[styles.btnText, { color: '#fff' }]}>
+                    Completed
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </>
         )}
-        {/* ⭐️ Completed Tab: tombol beri ulasan */}
-        {activeTab === 'Completed' &&
-          user?.role === 'user' &&
-          !item.has_review && (
-            <TouchableOpacity
-              style={[
-                styles.actionBtn,
-                { backgroundColor: '#0A84FF', marginTop: 10 },
-              ]}
-              onPress={() => {
-                setSelectedBooking(item);
-                setShowReviewModal(true);
-              }}
-            >
-              <Text style={[styles.btnText, { color: '#fff' }]}>
-                Beri Ulasan
+
+        {/* Completed Tab: tombol beri ulasan */}
+        {activeTab === 'Completed' && (
+          <>
+            {item.id_review || reviews[item.id_booking] ? (
+              // Sudah ada review (dari API atau dari state)
+              <View
+                style={[
+                  styles.reviewCard,
+                  {
+                    backgroundColor: isDark ? '#1c1c1e' : '#f5f5f5',
+                    borderColor: isDark ? '#333' : '#ddd',
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.reviewTitle,
+                    { color: isDark ? '#fff' : '#000' },
+                  ]}
+                >
+                  {user?.role === 'user'
+                    ? 'Ulasan Anda'
+                    : `Ulasan dari ${item.user_name}`}
+                </Text>
+
+                <View style={{ flexDirection: 'row', marginVertical: 6 }}>
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <Ionicons
+                      key={i}
+                      name={
+                        i <= (reviews[item.id_booking]?.rating || 0)
+                          ? 'star'
+                          : 'star-outline'
+                      }
+                      size={18}
+                      color="#FFD700"
+                      style={{ marginRight: 2 }}
+                    />
+                  ))}
+                </View>
+
+                <Text
+                  style={[
+                    styles.reviewComment,
+                    { color: isDark ? '#ccc' : '#333' },
+                  ]}
+                >
+                  “{reviews[item.id_booking]?.comment || 'Tidak ada komentar'}”
+                </Text>
+
+                <TouchableOpacity
+                  style={{
+                    marginTop: 8,
+                    paddingVertical: 6,
+                    alignSelf: 'flex-end',
+                  }}
+                  onPress={() => {
+                    setSelectedReview(reviews[item.id_booking]);
+                    setShowReviewDetailModal(true);
+                  }}
+                >
+                  <Text style={{ color: '#0A84FF', fontWeight: '600' }}>
+                    Lihat Review
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : user?.role === 'user' ? (
+              // 🔹 Jika belum ada review, tampilkan tombol beri ulasan
+              <TouchableOpacity
+                style={[
+                  styles.actionBtn,
+                  { backgroundColor: '#0A84FF', marginTop: 10 },
+                ]}
+                onPress={() => {
+                  setSelectedBooking(item);
+                  setShowReviewModal(true);
+                }}
+              >
+                <Text style={[styles.btnText, { color: '#fff' }]}>
+                  Beri Ulasan
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              //  Terapis tapi belum ada ulasan
+              <Text
+                style={{
+                  color: isDark ? '#888' : '#555',
+                  fontStyle: 'italic',
+                  marginTop: 10,
+                }}
+              >
+                Belum ada ulasan dari pasien
               </Text>
-            </TouchableOpacity>
-          )}
+            )}
+          </>
+        )}
       </View>
     );
   };
@@ -417,7 +563,7 @@ const BookScreen = () => {
     >
       <Header title="My Bookings" showLocation={false} showBack={false} />
 
-      {/* 🔍 Search bar + Sort icon */}
+      {/* Search bar + Sort icon */}
       <View
         style={[
           styles.searchContainer,
@@ -450,138 +596,35 @@ const BookScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Modal Sort */}
-      <Modal
+      {/* Modal */}
+      <SortModal
         visible={showSortModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowSortModal(false)}
-      >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setShowSortModal(false)}
-        >
-          <View
-            style={[
-              styles.modalContent,
-              { backgroundColor: isDark ? '#1a1a1a' : '#fff' },
-            ]}
-          >
-            <Text
-              style={[styles.modalTitle, { color: isDark ? '#fff' : '#000' }]}
-            >
-              Urutkan Berdasarkan
-            </Text>
+        onClose={() => setShowSortModal(false)}
+        sortOrder={sortOrder}
+        setSortOrder={setSortOrder}
+        isDark={isDark}
+        styles={styles}
+      />
 
-            {[
-              { key: 'desc', label: 'Terbaru' },
-              { key: 'asc', label: 'Terlama' },
-            ].map(option => (
-              <TouchableOpacity
-                key={option.key}
-                style={styles.modalItem}
-                onPress={() => {
-                  setSortOrder(option.key);
-                  setShowSortModal(false);
-                }}
-              >
-                <Text
-                  style={{
-                    color:
-                      sortOrder === option.key
-                        ? isDark
-                          ? '#4da6ff'
-                          : '#007bff'
-                        : isDark
-                        ? '#fff'
-                        : '#000',
-                    fontWeight: sortOrder === option.key ? '600' : '400',
-                  }}
-                >
-                  {option.label}
-                </Text>
-                {sortOrder === option.key && (
-                  <Ionicons
-                    name="checkmark-outline"
-                    size={18}
-                    color={isDark ? '#4da6ff' : '#007bff'}
-                  />
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </Pressable>
-      </Modal>
-      {/* ⭐️ Modal Beri Ulasan */}
-      <Modal visible={showReviewModal} transparent animationType="fade">
-        <View style={styles.reviewModalOverlay}>
-          <View
-            style={[
-              styles.reviewModalContent,
-              { backgroundColor: isDark ? '#1a1a1a' : '#fff' },
-            ]}
-          >
-            <Text
-              style={[
-                styles.reviewModalTitle,
-                { color: isDark ? '#fff' : '#000' },
-              ]}
-            >
-              Beri Ulasan
-            </Text>
+      <ReviewModal
+        visible={showReviewModal}
+        onClose={() => setShowReviewModal(false)}
+        rating={rating}
+        setRating={setRating}
+        comment={comment}
+        setComment={setComment}
+        handleSubmitReview={handleSubmitReview}
+        isDark={isDark}
+        styles={styles}
+      />
 
-            {/* Rating bintang */}
-            <View style={styles.reviewStarsRow}>
-              {[1, 2, 3, 4, 5].map(i => (
-                <TouchableOpacity key={i} onPress={() => setRating(i)}>
-                  <Ionicons
-                    name={i <= rating ? 'star' : 'star-outline'}
-                    size={32}
-                    color="#FFD700"
-                    style={{ marginHorizontal: 6 }}
-                  />
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <TextInput
-              placeholder="Tulis komentar..."
-              placeholderTextColor={isDark ? '#777' : '#aaa'}
-              value={comment}
-              onChangeText={setComment}
-              multiline
-              style={[
-                styles.reviewInput,
-                {
-                  color: isDark ? '#fff' : '#000',
-                  backgroundColor: isDark ? '#232323' : '#F2F2F7',
-                },
-              ]}
-            />
-
-            <View style={styles.reviewButtonRow}>
-              <Pressable
-                style={[
-                  styles.reviewActionBtn,
-                  { backgroundColor: '#ccc', marginRight: 8 },
-                ]}
-                onPress={() => setShowReviewModal(false)}
-              >
-                <Text style={{ color: '#000', fontWeight: '600' }}>Batal</Text>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.reviewActionBtn,
-                  { backgroundColor: '#0A84FF', marginLeft: 8 },
-                ]}
-                onPress={handleSubmitReview}
-              >
-                <Text style={{ color: '#fff', fontWeight: '600' }}>Kirim</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <ReviewDetailModal
+        visible={showReviewDetailModal}
+        onClose={() => setShowReviewDetailModal(false)}
+        selectedReview={selectedReview}
+        isDark={isDark}
+        styles={styles}
+      />
 
       {/* Tabs */}
       <View
@@ -599,17 +642,37 @@ const BookScreen = () => {
             style={styles.tabItem}
             onPress={() => setActiveTab(tab)}
           >
-            <Text
-              style={[
-                styles.tabText,
-                {
-                  color:
-                    activeTab === tab ? '#0A84FF' : isDark ? '#888' : '#555',
-                },
-              ]}
-            >
-              {tab}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text
+                style={[
+                  styles.tabText,
+                  {
+                    color:
+                      activeTab === tab ? '#0A84FF' : isDark ? '#888' : '#555',
+                  },
+                ]}
+              >
+                {tab}
+              </Text>
+
+              {countByStatus[tab] > 0 && (
+                <View
+                  style={[
+                    styles.badge,
+                    { backgroundColor: activeTab === tab ? '#0A84FF' : '#ccc' },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.badgeText,
+                      { color: activeTab === tab ? '#fff' : '#000' },
+                    ]}
+                  >
+                    {countByStatus[tab]}
+                  </Text>
+                </View>
+              )}
+            </View>
             {activeTab === tab && <View style={styles.activeLine} />}
           </TouchableOpacity>
         ))}
@@ -787,6 +850,62 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  reviewCard: {
+    marginTop: 10,
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+  },
+  reviewTitle: {
+    fontWeight: '600',
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  reviewComment: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContainer: {
+    width: '85%',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  closeBtn: {
+    marginTop: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 30,
+    borderRadius: 10,
+  },
+  badge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    marginLeft: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 5,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 });
 

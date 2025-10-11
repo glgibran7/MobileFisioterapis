@@ -17,7 +17,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import { useGlobal } from '../context/GlobalContext.js';
 import Header from '../components/Header.js';
-import Api from '../utils/Api.js'; // ✅ panggil API
+import Api from '../utils/Api.js';
 
 import logoLight from '../img/fisioterapihitam.png';
 import logoDark from '../img/fisiotrapiputih.png';
@@ -32,9 +32,9 @@ const RegisterScreen = ({ navigation }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
+  const [isTherapist, setIsTherapist] = useState(false); // ✅ state untuk pilih daftar sebagai terapis
 
   const { showLoading, hideLoading, showToast } = useGlobal();
-
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const colorScheme = useColorScheme();
@@ -61,19 +61,20 @@ const RegisterScreen = ({ navigation }) => {
 
     showLoading();
     try {
-      const response = await Api.post('/auth/register', {
-        name,
-        email,
-        password,
-        phone,
-        role: 'user', // default user
-      });
+      // Payload sama untuk semua
+      const payload = { name, email, password, phone };
 
+      // Tentukan endpoint sesuai pilihan
+      const endpoint = isTherapist
+        ? '/auth/register/therapist'
+        : '/auth/register';
+
+      const response = await Api.post(endpoint, payload);
       console.log('Register response:', response.data);
 
       if (response.data?.status === 'success') {
         hideLoading();
-        showToast('Registrasi berhasil 🎉', 'success');
+        showToast('Registrasi berhasil', 'Silahkan login', 'success');
         navigation.replace('LoginScreen');
       } else {
         hideLoading();
@@ -111,7 +112,11 @@ const RegisterScreen = ({ navigation }) => {
             source={isDark ? logoDark : logoLight}
             style={[
               styles.logo,
-              { opacity: fadeAnim, width: width * 0.9, height: width * 0.5 },
+              {
+                opacity: fadeAnim,
+                width: width * 0.8,
+                height: height * 0.2,
+              },
             ]}
             resizeMode="cover"
           />
@@ -198,6 +203,37 @@ const RegisterScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
+          {/* ✅ Pilihan daftar sebagai terapis (kiri atas, dengan label kecil) */}
+          <View style={styles.accountTypeWrapper}>
+            <Text style={styles.accountLabel}>Daftar sebagai</Text>
+
+            <View style={styles.toggleRow}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => setIsTherapist(!isTherapist)}
+                style={[
+                  styles.toggleSwitch,
+                  {
+                    backgroundColor: isTherapist ? '#007BFF' : '#ccc',
+                    justifyContent: isTherapist ? 'flex-end' : 'flex-start',
+                  },
+                ]}
+              >
+                <View style={styles.toggleCircle}>
+                  <Ionicons
+                    name={isTherapist ? 'medkit-outline' : 'person-outline'}
+                    size={20}
+                    color={isTherapist ? '#007BFF' : '#555'}
+                  />
+                </View>
+              </TouchableOpacity>
+
+              <Text style={[styles.toggleLabel, themeStyles.text]}>
+                {isTherapist ? 'Terapis' : 'Pengguna'}
+              </Text>
+            </View>
+          </View>
+
           {/* Button Register */}
           <LinearGradient
             colors={['#00BFFF', '#063665ff']}
@@ -231,13 +267,11 @@ const styles = StyleSheet.create({
     padding: width * 0.05,
   },
   logo: {
-    width: width * 0.35,
-    height: height * 0.18,
-    marginBottom: height * 0.04,
+    marginBottom: height * 0.01,
   },
   input: {
     width: '100%',
-    padding: 15,
+    padding: 12,
     marginVertical: 10,
     borderWidth: 1,
     borderRadius: 10,
@@ -252,12 +286,56 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 15,
   },
+
+  accountTypeWrapper: {
+    width: '100%',
+    alignItems: 'flex-start', // kiri
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  accountLabel: {
+    fontSize: 12,
+    color: '#777',
+    marginBottom: 6,
+    marginLeft: 2,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  toggleSwitch: {
+    width: 80,
+    height: 38,
+    borderRadius: 25,
+    padding: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  toggleCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  toggleLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+
   registerButton: {
     width: '100%',
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: 10,
   },
   registerButtonText: {
     fontSize: 18,
@@ -274,14 +352,12 @@ const styles = StyleSheet.create({
   },
 });
 
-/* Tema Terang */
 const lightStyles = StyleSheet.create({
   container: { backgroundColor: '#fff' },
   input: { borderColor: '#ddd', backgroundColor: '#f9f9f9', color: '#000' },
   text: { color: '#333' },
 });
 
-/* Tema Gelap */
 const darkStyles = StyleSheet.create({
   container: { backgroundColor: '#000' },
   input: { borderColor: '#444', backgroundColor: '#1e1e1e', color: '#fff' },

@@ -115,7 +115,13 @@ const UbahPasswordScreen = ({ navigation }) => {
 
   return (
     <View style={[styles.container, themeStyles.container]}>
-      <Header title="Ubah Password" onBack={() => navigation.goBack()} />
+      <Header
+        title="Ubah Password"
+        showLocation={false}
+        showNotification={false}
+        showMessage={false}
+        onBack={() => navigation.goBack()}
+      />
 
       <ScrollView contentContainerStyle={styles.form}>
         {renderInput(

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import {
   View,
   Text,
@@ -13,10 +13,11 @@ import { useNavigation } from '@react-navigation/native';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import Header from '../../components/Header';
 import Api from '../../utils/Api';
+import { useGlobal } from '../../context/GlobalContext'; // ✅ pastikan path sesuai
 
 const AdminHomeScreen = () => {
   const navigation = useNavigation();
-  const [loading, setLoading] = useState(false);
+  const { showLoading, hideLoading } = useGlobal(); // ✅ ambil dari global
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -46,7 +47,7 @@ const AdminHomeScreen = () => {
 
   const fetchStats = async () => {
     try {
-      setLoading(true);
+      showLoading(); // gunakan global loading
       const res = await Api.get('/admin/stats');
       if (res.data?.status === 'success') {
         setStats({
@@ -58,7 +59,7 @@ const AdminHomeScreen = () => {
     } catch (err) {
       console.log('Error fetching admin stats:', err);
     } finally {
-      setLoading(false);
+      hideLoading(); // tutup global loading
     }
   };
 
@@ -89,9 +90,6 @@ const AdminHomeScreen = () => {
           />
         }
       >
-        {/* <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          Statistik
-        </Text> */}
         {/* 🧾 Statistik Admin */}
         <View style={styles.statsRow}>
           {[
@@ -136,29 +134,21 @@ const AdminHomeScreen = () => {
 
         {/* 📦 Grid Tombol Aksi */}
         <View style={styles.actionsGrid}>
-          {loading ? (
-            <ActivityIndicator
-              size="large"
-              color={colors.text}
-              style={{ marginTop: 20 }}
-            />
-          ) : (
-            actionButtons.map((btn, idx) => (
-              <TouchableOpacity
-                key={idx}
-                style={[
-                  styles.actionBtn,
-                  { backgroundColor: colors.card, borderColor: colors.border },
-                ]}
-                onPress={() => navigation.navigate(btn.screen)}
-              >
-                <Ionicons name={btn.icon} size={26} color={colors.text} />
-                <Text style={[styles.actionBtnText, { color: colors.text }]}>
-                  {btn.label}
-                </Text>
-              </TouchableOpacity>
-            ))
-          )}
+          {actionButtons.map((btn, idx) => (
+            <TouchableOpacity
+              key={idx}
+              style={[
+                styles.actionBtn,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+              onPress={() => navigation.navigate(btn.screen)}
+            >
+              <Ionicons name={btn.icon} size={26} color={colors.text} />
+              <Text style={[styles.actionBtnText, { color: colors.text }]}>
+                {btn.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </ScrollView>
     </>
@@ -168,7 +158,6 @@ const AdminHomeScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20, paddingTop: 10 },
 
-  // Statistik
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -185,7 +174,6 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 18, fontWeight: '700', marginTop: 6 },
   statLabel: { fontSize: 12, marginTop: 4 },
 
-  // Kelola Data
   sectionTitle: {
     fontSize: 14,
     fontWeight: '700',
@@ -193,7 +181,6 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
 
-  // Tombol Aksi
   actionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
