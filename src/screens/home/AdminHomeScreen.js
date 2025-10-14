@@ -1,28 +1,31 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  ActivityIndicator,
   ScrollView,
-  useColorScheme,
   RefreshControl,
+  useColorScheme,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import Header from '../../components/Header';
 import Api from '../../utils/Api';
-import { useGlobal } from '../../context/GlobalContext'; // ✅ pastikan path sesuai
+import { useGlobal } from '../../context/GlobalContext';
 
 const AdminHomeScreen = () => {
   const navigation = useNavigation();
-  const { showLoading, hideLoading } = useGlobal(); // ✅ ambil dari global
+  const { showLoading, hideLoading } = useGlobal();
   const [refreshing, setRefreshing] = useState(false);
+
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalTherapists: 0,
     totalBookings: 0,
+    pending: 0,
+    accepted: 0,
+    completed: 0,
   });
 
   const scheme = useColorScheme();
@@ -40,26 +43,50 @@ const AdminHomeScreen = () => {
     fetchStats();
   }, []);
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    fetchStats().finally(() => setTimeout(() => setRefreshing(false), 1200));
+    await fetchStats();
+    setRefreshing(false);
   };
 
   const fetchStats = async () => {
     try {
-      showLoading(); // gunakan global loading
-      const res = await Api.get('/admin/stats');
-      if (res.data?.status === 'success') {
-        setStats({
-          totalUsers: res.data.data.total_users || 0,
-          totalTherapists: res.data.data.total_therapists || 0,
-          totalBookings: res.data.data.total_bookings || 0,
-        });
-      }
+      showLoading();
+
+      // ✅ Ambil semua data dari masing-masing endpoint
+      const [userRes, therapistRes, bookingRes] = await Promise.all([
+        Api.get('/users'),
+        Api.get('/therapists'),
+        Api.get('/bookings'),
+      ]);
+
+      const users = userRes.data?.data || [];
+      const therapists = therapistRes.data?.data || [];
+      const bookings = bookingRes.data?.data || [];
+
+      // ✅ Hitung berdasarkan status booking
+      const pending = bookings.filter(
+        b => b.status_booking === 'pending',
+      ).length;
+      const accepted = bookings.filter(
+        b => b.status_booking === 'accepted',
+      ).length;
+      const completed = bookings.filter(
+        b => b.status_booking === 'completed',
+      ).length;
+
+      setStats({
+        totalUsers: users.length,
+        totalTherapists: therapists.length,
+        totalBookings: bookings.length,
+        pending,
+        accepted,
+        completed,
+      });
     } catch (err) {
-      console.log('Error fetching admin stats:', err);
+      console.log('Error fetching stats:', err);
     } finally {
-      hideLoading(); // tutup global loading
+      hideLoading();
     }
   };
 
@@ -76,6 +103,7 @@ const AdminHomeScreen = () => {
         showLocation={false}
         showBack={false}
         showCart={false}
+        showMessage={false}
       />
 
       <ScrollView
@@ -90,7 +118,7 @@ const AdminHomeScreen = () => {
           />
         }
       >
-        {/* 🧾 Statistik Admin */}
+        {/* 🧾 Statistik Pengguna & Terapis */}
         <View style={styles.statsRow}>
           {[
             {
@@ -127,12 +155,46 @@ const AdminHomeScreen = () => {
           ))}
         </View>
 
+        {/* 📊 Statistik Booking per Status */}
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          Statistik Booking
+        </Text>
+        <View style={styles.statsRow}>
+          {[
+            { icon: 'time-outline', label: 'Pending', value: stats.pending },
+            {
+              icon: 'checkmark-circle-outline',
+              label: 'Accepted',
+              value: stats.accepted,
+            },
+            {
+              icon: 'trophy-outline',
+              label: 'Completed',
+              value: stats.completed,
+            },
+          ].map((item, idx) => (
+            <View
+              key={idx}
+              style={[
+                styles.statItem,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <Ionicons name={item.icon} size={26} color={colors.text} />
+              <Text style={[styles.statValue, { color: colors.text }]}>
+                {item.value}
+              </Text>
+              <Text style={[styles.statLabel, { color: colors.subText }]}>
+                {item.label}
+              </Text>
+            </View>
+          ))}
+        </View>
+
         {/* 🔧 Kelola Data */}
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
           Kelola Data
         </Text>
-
-        {/* 📦 Grid Tombol Aksi */}
         <View style={styles.actionsGrid}>
           {actionButtons.map((btn, idx) => (
             <TouchableOpacity
@@ -157,7 +219,6 @@ const AdminHomeScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20, paddingTop: 10 },
-
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -173,14 +234,12 @@ const styles = StyleSheet.create({
   },
   statValue: { fontSize: 18, fontWeight: '700', marginTop: 6 },
   statLabel: { fontSize: 12, marginTop: 4 },
-
   sectionTitle: {
     fontSize: 14,
     fontWeight: '700',
     marginBottom: 14,
     marginLeft: 4,
   },
-
   actionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',

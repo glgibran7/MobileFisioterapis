@@ -237,7 +237,8 @@ const TerapisScreen = () => {
         title="Daftar Terapis"
         showLocation={false}
         showBack={false}
-        showMessage={true}
+        showMessage={false}
+        onNotificationPress={() => navigation.navigate('NotificationScreen')}
       />
 
       {/* Search */}

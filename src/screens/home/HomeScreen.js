@@ -104,9 +104,11 @@ export default function HomeScreen({ navigation }) {
     <>
       <Header
         title="Home"
+        showLocation={false}
         showBack={false}
         showCart={true}
-        showMessage={true}
+        showMessage={false}
+        onNotificationPress={() => navigation.navigate('NotificationScreen')}
       />
 
       <ScrollView

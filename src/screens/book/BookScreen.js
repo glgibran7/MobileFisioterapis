@@ -12,6 +12,7 @@ import {
   Alert,
   TextInput,
 } from 'react-native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import Header from '../../components/Header';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import Api from '../../utils/Api';
@@ -27,7 +28,10 @@ const BookScreen = () => {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
   const { showToast, showLoading, hideLoading } = useGlobal();
+  const route = useRoute();
+  const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState('Upcoming');
+
   const [bookings, setBookings] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState(null);
@@ -556,12 +560,26 @@ const BookScreen = () => {
       </View>
     );
   };
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (route.params?.initialTab) {
+        setActiveTab(route.params.initialTab);
+      }
+    });
+    return unsubscribe;
+  }, [navigation, route.params?.initialTab]);
 
   return (
     <View
       style={[styles.container, { backgroundColor: isDark ? '#000' : '#fff' }]}
     >
-      <Header title="My Bookings" showLocation={false} showBack={false} />
+      <Header
+        title="My Bookings"
+        showLocation={false}
+        showBack={false}
+        showMessage={false}
+        onNotificationPress={() => navigation.navigate('NotificationScreen')}
+      />
 
       {/* Search bar + Sort icon */}
       <View

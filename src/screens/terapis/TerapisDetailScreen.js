@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   Modal,
   Pressable,
   TextInput,
+  RefreshControl,
 } from 'react-native';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import Header from '../../components/Header';
@@ -24,9 +25,14 @@ const { width } = Dimensions.get('window');
 
 const TerapisDetailScreen = ({ route, navigation }) => {
   const { therapist } = route.params;
+  const workingHours =
+    typeof therapist.working_hours === 'string'
+      ? JSON.parse(therapist.working_hours)
+      : therapist.working_hours || { start: '', end: '' };
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
   const { user, showLoading, hideLoading, showToast } = useGlobal();
+  const [refreshing, setRefreshing] = useState(false); // untuk RefreshControl
 
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -37,14 +43,45 @@ const TerapisDetailScreen = ({ route, navigation }) => {
     experience_years: parseInt(therapist.experience_years) || '',
     specialization: therapist.specialization || '',
     status_therapist: therapist.status_therapist || 'available',
-    working_hours: therapist.working_hours || { start: '', end: '' },
+    working_hours:
+      typeof therapist.working_hours === 'string'
+        ? JSON.parse(therapist.working_hours)
+        : therapist.working_hours || { start: '', end: '' },
   });
+
   console.log(therapist);
 
   const handleEdit = async () => {
     try {
+      const changedFields = {};
+
+      if (editData.bio !== therapist.bio) changedFields.bio = editData.bio;
+      if (
+        parseInt(editData.experience_years) !==
+        parseInt(therapist.experience_years)
+      )
+        changedFields.experience_years = parseInt(editData.experience_years);
+      if (editData.specialization !== therapist.specialization)
+        changedFields.specialization = editData.specialization;
+      if (editData.status_therapist !== therapist.status_therapist)
+        changedFields.status_therapist = editData.status_therapist;
+      if (
+        editData.working_hours.start !== therapist.working_hours?.start ||
+        editData.working_hours.end !== therapist.working_hours?.end
+      ) {
+        changedFields.working_hours = {
+          start: editData.working_hours.start,
+          end: editData.working_hours.end,
+        };
+      }
+
+      if (Object.keys(changedFields).length === 0) {
+        showToast('Tidak ada perubahan', 'Data tidak diubah.', 'info');
+        return;
+      }
+
       showLoading();
-      await Api.put(`/therapists/${therapist.id_therapist}`, editData);
+      await Api.put(`/therapists/${therapist.id_therapist}`, changedFields);
       hideLoading();
       showToast('Berhasil', 'Data terapis berhasil diperbarui', 'success');
       setEditVisible(false);
@@ -138,6 +175,17 @@ const TerapisDetailScreen = ({ route, navigation }) => {
     );
   };
 
+  const onRefresh = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      await fetchReviews(); // panggil ulang review
+    } catch (error) {
+      console.error('Gagal refresh data:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Header
@@ -146,10 +194,21 @@ const TerapisDetailScreen = ({ route, navigation }) => {
         showLocation={false}
         onBack={() => navigation.goBack()}
         showCart={false}
-        showMessage
+        showMessage={false}
+        onNotificationPress={() => navigation.navigate('NotificationScreen')}
       />
 
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#007bff']} // warna spinner
+            tintColor={colors.accent}
+          />
+        }
+      >
         {/* Profil utama */}
         <View
           style={[
@@ -290,8 +349,8 @@ const TerapisDetailScreen = ({ route, navigation }) => {
             Jam Kerja
           </Text>
           <Text style={[styles.sectionText, { color: colors.textSecondary }]}>
-            {therapist.working_hours
-              ? `${therapist.working_hours.start} - ${therapist.working_hours.end}`
+            {workingHours.start && workingHours.end
+              ? `${workingHours.start} - ${workingHours.end}`
               : 'Belum ada informasi jam kerja.'}
           </Text>
         </View>

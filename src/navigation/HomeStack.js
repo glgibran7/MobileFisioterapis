@@ -4,7 +4,7 @@ import HomeScreen from '../screens/home/HomeScreen';
 import AllCategoryScreen from '../screens/home/AllCategoryScreen';
 import AllHealthInfoScreen from '../screens/home/AllHealthInfoScreen';
 import DetailInformasiScreen from '../screens/home/DetailInformasiScreen';
-
+import NotificationScreen from '../components/NotificationScreen';
 const Stack = createNativeStackNavigator();
 
 const BookStack = () => {
@@ -19,6 +19,11 @@ const BookStack = () => {
       <Stack.Screen
         name="DetailInformasiScreen"
         component={DetailInformasiScreen}
+      />
+      <Stack.Screen
+        name="NotificationScreen"
+        component={NotificationScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

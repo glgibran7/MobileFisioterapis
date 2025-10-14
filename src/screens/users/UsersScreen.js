@@ -215,7 +215,7 @@ const UsersScreen = () => {
         showLocation={false}
         showBack={false}
         showMessage={false}
-        showNotification={false}
+        showNotification={true}
       />
 
       {/* 🔍 Search bar */}

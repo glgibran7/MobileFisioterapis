@@ -88,7 +88,8 @@ const ProfileScreen = () => {
         showLocation={false}
         showBack={false}
         onBack={() => navigation.goBack()}
-        showMessage={true}
+        showMessage={false}
+        onNotificationPress={() => navigation.navigate('NotificationScreen')}
       />
       <ScrollView
         style={[styles.container, themeStyles.container]}

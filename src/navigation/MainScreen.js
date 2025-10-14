@@ -111,14 +111,18 @@ const MainScreen = () => {
     >
       {/* Home — tetap satu nama tab, tapi isi berbeda */}
       <Tab.Screen name="Home" component={getHomeComponent()} />
+
       {/* Hanya untuk admin */}
       {userRole === 'admin' && (
         <Tab.Screen name="Pengguna" component={UsersScreen} />
       )}
-      {/* Tab umum */}
-      <Tab.Screen name="Terapis" component={TerapisStack} />
-      <Tab.Screen name="Book" component={BookStack} />
 
+      {/* Terapis hanya untuk role selain therapist */}
+      {userRole !== 'therapist' && (
+        <Tab.Screen name="Terapis" component={TerapisStack} />
+      )}
+
+      <Tab.Screen name="Book" component={BookStack} />
       <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
   );
